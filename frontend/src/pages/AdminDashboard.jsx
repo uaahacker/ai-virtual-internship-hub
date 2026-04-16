@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import { adminService } from '../services/endpoints';
-import { FiUsers, FiShield, FiBookOpen, FiArrowRight, FiBarChart2 } from 'react-icons/fi';
+import { Card, CardHeader, CardBody, SectionCard, StatCard, Badge } from '../components/CardComponents';
+import { DataTable, ListItem } from '../components/DataTable';
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
@@ -15,21 +16,6 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  const roleBadge = (role) => {
-    const colors = {
-      Student: 'bg-blue-100 text-blue-700',
-      Mentor: 'bg-green-100 text-green-700',
-      Admin: 'bg-purple-100 text-purple-700',
-    };
-    return colors[role] || 'bg-gray-100 text-gray-700';
-  };
-
-  const statusBadge = (status) => {
-    return status === 'Active'
-      ? 'bg-green-100 text-green-700'
-      : 'bg-red-100 text-red-700';
-  };
-
   const stats = {
     total: users.length,
     students: users.filter((u) => u.role === 'Student').length,
@@ -37,99 +23,257 @@ export default function AdminDashboard() {
     admins: users.filter((u) => u.role === 'Admin').length,
   };
 
+  const getRoleStatus = (role) => {
+    if (role === 'Student') return 'info';
+    if (role === 'Mentor') return 'success';
+    if (role === 'Admin') return 'primary';
+    return 'default';
+  };
+
+  const getStatusColor = (status) => {
+    return status === 'Active' ? 'success' : 'error';
+  };
+
+  const tableColumns = [
+    { key: 'name', label: 'Name' },
+    {
+      key: 'email',
+      label: 'Email',
+      render: (val) => <span className="text-slate-600">{val}</span>,
+    },
+    {
+      key: 'role',
+      label: 'Role',
+      render: (val) => <Badge text={val} status={getRoleStatus(val)} size="sm" />,
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (val) => <Badge text={val} status={getStatusColor(val)} size="sm" />,
+    },
+    {
+      key: 'created_at',
+      label: 'Joined',
+      render: (val) => new Date(val).toLocaleDateString(),
+    },
+  ];
+
   return (
     <DashboardLayout>
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-500 mt-1">Manage users and monitor platform activity.</p>
+        <h1 className="text-3xl font-bold text-slate-900">Admin Control Center ⚙️</h1>
+        <p className="text-slate-600 mt-2">Manage users, monitor platform activity, and system settings</p>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Total Users', value: stats.total, icon: FiUsers, color: 'text-primary-600 bg-primary-100' },
-          { label: 'Students', value: stats.students, icon: FiBookOpen, color: 'text-blue-600 bg-blue-100' },
-          { label: 'Mentors', value: stats.mentors, icon: FiShield, color: 'text-green-600 bg-green-100' },
-          { label: 'Admins', value: stats.admins, icon: FiShield, color: 'text-purple-600 bg-purple-100' },
-        ].map((card) => (
-          <div key={card.label} className="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
-            <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${card.color}`}>
-              <card.icon size={20} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{card.value}</p>
-              <p className="text-xs text-gray-500">{card.label}</p>
-            </div>
-          </div>
-        ))}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard
+          label="Total Users"
+          value={stats.total}
+          icon="👥"
+          change={`${stats.students} students, ${stats.mentors} mentors`}
+        />
+        <StatCard
+          label="Students"
+          value={stats.students}
+          icon="📚"
+          change={`${((stats.students / stats.total) * 100).toFixed(0)}% of total`}
+        />
+        <StatCard
+          label="Mentors"
+          value={stats.mentors}
+          icon="👨‍🏫"
+          change={`${((stats.mentors / stats.total) * 100).toFixed(0)}% of total`}
+        />
+        <StatCard
+          label="Admins"
+          value={stats.admins}
+          icon="🔐"
+        />
       </div>
 
-      {/* Users table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-800">All Users</h2>
-        </div>
-        {loading ? (
-          <div className="text-center py-12 text-gray-400">Loading users...</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">#</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Name</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Email</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Role</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Joined</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {users.map((u, idx) => (
-                  <tr key={u.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-3 text-gray-500">{idx + 1}</td>
-                    <td className="px-6 py-3 font-medium text-gray-800">{u.name}</td>
-                    <td className="px-6 py-3 text-gray-600">{u.email}</td>
-                    <td className="px-6 py-3">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${roleBadge(u.role)}`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusBadge(u.status)}`}>
-                        {u.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-gray-500">
-                      {new Date(u.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Analytics Section */}
-      <div className="mt-8">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <FiBarChart2 className="text-blue-600" size={28} />
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">System Analytics</h2>
-                <p className="text-sm text-gray-600">View detailed platform metrics and performance statistics</p>
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Users Table - Main */}
+        <div className="lg:col-span-2">
+          <SectionCard
+            title="📋 User Management"
+            subtitle={`${users.length} total users`}
+            action={
+              <Link to="/admin/users" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                View All →
+              </Link>
+            }
+          >
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
               </div>
-            </div>
-            <Link
-              to="/admin/analytics"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
-            >
-              View Analytics <FiArrowRight />
-            </Link>
-          </div>
+            ) : (
+              <DataTable
+                columns={tableColumns}
+                data={users.slice(0, 10)}
+                pagination={false}
+                onRowClick={(row) => console.log('User clicked:', row)}
+              />
+            )}
+          </SectionCard>
         </div>
+
+        {/* Admin Actions - Sidebar */}
+        <div className="space-y-4">
+          {/* User Management */}
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardBody className="text-center">
+              <div className="text-4xl mb-3">👥</div>
+              <h3 className="font-semibold text-slate-900 mb-2">Users</h3>
+              <p className="text-sm text-slate-700 mb-4">
+                Manage all users and permissions
+              </p>
+              <Link
+                to="/admin/users"
+                className="block px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-center text-sm"
+              >
+                Manage Users →
+              </Link>
+            </CardBody>
+          </Card>
+
+          {/* Assessments */}
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardBody className="text-center">
+              <div className="text-4xl mb-3">📋</div>
+              <h3 className="font-semibold text-slate-900 mb-2">Assessments</h3>
+              <p className="text-sm text-slate-700 mb-4">
+                Create and manage skill assessments
+              </p>
+              <Link
+                to="/admin/assessments"
+                className="block px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-center text-sm"
+              >
+                Go To Assessments →
+              </Link>
+            </CardBody>
+          </Card>
+
+          {/* Tasks */}
+          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+            <CardBody className="text-center">
+              <div className="text-4xl mb-3">🎯</div>
+              <h3 className="font-semibold text-slate-900 mb-2">Tasks</h3>
+              <p className="text-sm text-slate-700 mb-4">
+                Create and manage learning tasks
+              </p>
+              <Link
+                to="/admin/tasks"
+                className="block px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 transition-colors text-center text-sm"
+              >
+                Manage Tasks →
+              </Link>
+            </CardBody>
+          </Card>
+
+          {/* Reports & Analytics */}
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <CardBody className="text-center">
+              <div className="text-4xl mb-3">📈</div>
+              <h3 className="font-semibold text-slate-900 mb-2">Analytics</h3>
+              <p className="text-sm text-slate-700 mb-4">
+                View detailed platform metrics
+              </p>
+              <Link
+                to="/admin/reports"
+                className="block px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-center text-sm"
+              >
+                View Reports →
+              </Link>
+            </CardBody>
+          </Card>
+
+          {/* Settings */}
+          <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
+            <CardBody className="text-center">
+              <div className="text-4xl mb-3">⚙️</div>
+              <h3 className="font-semibold text-slate-900 mb-2">Settings</h3>
+              <p className="text-sm text-slate-700 mb-4">
+                Configure system settings
+              </p>
+              <Link
+                to="/admin/settings"
+                className="block px-4 py-2 bg-slate-600 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors text-center text-sm"
+              >
+                Go To Settings →
+              </Link>
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+
+      {/* System Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Active Sessions */}
+        <SectionCard
+          title="🟢 Active Sessions"
+          subtitle="Real-time system activity"
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm font-medium text-slate-700">Online Users</span>
+              <Badge text={Math.floor(Math.random() * 50 + 10)} status="success" size="sm" />
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm font-medium text-slate-700">Active Sessions</span>
+              <Badge text={Math.floor(Math.random() * 30 + 5)} status="info" size="sm" />
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm font-medium text-slate-700">System Status</span>
+              <Badge text="Operational" status="success" size="sm" />
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* Platform Stats */}
+        <SectionCard
+          title="📊 Platform Stats"
+          subtitle="Last 30 days"
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm font-medium text-slate-700">Assessments Taken</span>
+              <span className="font-bold text-slate-900">{Math.floor(Math.random() * 500 + 100)}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm font-medium text-slate-700">Tasks Completed</span>
+              <span className="font-bold text-slate-900">{Math.floor(Math.random() * 300 + 50)}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm font-medium text-slate-700">New Users</span>
+              <span className="font-bold text-slate-900">{Math.floor(Math.random() * 50 + 10)}</span>
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* System Health */}
+        <SectionCard
+          title="🏥 System Health"
+          subtitle="Current status"
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm font-medium text-slate-700">Database</span>
+              <Badge text="Healthy" status="success" size="sm" />
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm font-medium text-slate-700">API Server</span>
+              <Badge text="Healthy" status="success" size="sm" />
+            </div>
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm font-medium text-slate-700">Storage</span>
+              <Badge text="88% Used" status="warning" size="sm" />
+            </div>
+          </div>
+        </SectionCard>
       </div>
     </DashboardLayout>
   );

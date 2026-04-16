@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import { assessmentService } from '../services/endpoints';
-import { FiClock, FiHelpCircle, FiArrowRight } from 'react-icons/fi';
+import { Card, CardBody, SectionCard, Badge } from '../components/CardComponents';
+import { EmptyState } from '../components/ProgressAndUtilityComponents';
 
 export default function AssessmentList() {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDomain, setSelectedDomain] = useState(null);
 
   useEffect(() => {
     assessmentService.list()
@@ -15,71 +17,117 @@ export default function AssessmentList() {
       .finally(() => setLoading(false));
   }, []);
 
-  const domainColor = (domain) => {
-    const colors = {
-      'Programming': 'border-l-blue-500',
-      'Content Writing': 'border-l-green-500',
-      'Graphic Design': 'border-l-pink-500',
-      'Freelancing': 'border-l-yellow-500',
-      'E-Commerce': 'border-l-purple-500',
-      'QuickBooks': 'border-l-orange-500',
-      'AutoCAD': 'border-l-red-500',
-      'Data Analytics': 'border-l-cyan-500',
-      'Digital Marketing': 'border-l-indigo-500',
-      'WordPress': 'border-l-teal-500',
-    };
-    return colors[domain] || 'border-l-gray-400';
+  // Get unique domains
+  const domains = [...new Set(assessments.map(a => a.domain))];
+  const filteredAssessments = selectedDomain
+    ? assessments.filter(a => a.domain === selectedDomain)
+    : assessments;
+
+  const domainEmojis = {
+    'Programming': '💻',
+    'Content Writing': '✍️',
+    'Graphic Design': '🎨',
+    'Freelancing': '💼',
+    'E-Commerce': '🛍️',
+    'QuickBooks': '📊',
+    'AutoCAD': '📐',
+    'Data Analytics': '📈',
+    'Digital Marketing': '📱',
+    'WordPress': '🌐',
   };
 
   return (
     <DashboardLayout>
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Skill Assessments</h1>
-        <p className="text-gray-500 mt-1">
-          Choose a domain and test your skills. Get instant results and career recommendations.
+        <h1 className="text-3xl font-bold text-slate-900">📋 Skill Assessments</h1>
+        <p className="text-slate-600 mt-2">
+          Test your knowledge across multiple domains and get personalized recommendations
         </p>
       </div>
 
-      {loading ? (
-        <div className="text-center py-16 text-gray-400">Loading assessments...</div>
-      ) : assessments.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <FiHelpCircle className="mx-auto mb-3" size={48} />
-          <p>No assessments available yet. Please check back later.</p>
+      {/* Domain Filter */}
+      {domains.length > 0 && (
+        <div className="mb-8 flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedDomain(null)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              selectedDomain === null
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+            }`}
+          >
+            All ({assessments.length})
+          </button>
+          {domains.map(domain => (
+            <button
+              key={domain}
+              onClick={() => setSelectedDomain(domain)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                selectedDomain === domain
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+              }`}
+            >
+              {domainEmojis[domain] || '📌'} {domain} ({assessments.filter(a => a.domain === domain).length})
+            </button>
+          ))}
         </div>
+      )}
+
+      {/* Assessment Grid */}
+      {loading ? (
+        <div className="flex justify-center items-center py-16">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+        </div>
+      ) : filteredAssessments.length === 0 ? (
+        <EmptyState
+          icon="🔍"
+          title="No assessments found"
+          description={selectedDomain ? `No assessments available for ${selectedDomain}` : 'Check back soon for new assessments'}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {assessments.map((a) => (
-            <div
-              key={a.id}
-              className={`bg-white rounded-xl shadow-sm border-l-4 ${domainColor(a.domain)} hover:shadow-md transition`}
-            >
-              <div className="p-6">
-                <span className="inline-block text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded mb-3">
-                  {a.domain}
-                </span>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">{a.title}</h3>
-                <p className="text-sm text-gray-500 mb-4 line-clamp-2">
-                  {a.description || 'Test your knowledge in this domain.'}
+          {filteredAssessments.map((a) => (
+            <Card key={a.id} hover className="group">
+              <CardBody className="p-6">
+                {/* Domain Badge */}
+                <div className="flex items-center justify-between mb-3">
+                  <Badge text={a.domain} status="info" size="sm" />
+                  <span className="text-2xl">{domainEmojis[a.domain] || '📌'}</span>
+                </div>
+
+                {/* Title */}
+                <h3 className="text-lg font-semibold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
+                  {a.title}
+                </h3>
+
+                {/* Description */}
+                <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                  {a.description || 'Test your knowledge in this domain and get instant results.'}
                 </p>
-                <div className="flex items-center gap-4 text-xs text-gray-400 mb-5">
+
+                {/* Meta Information */}
+                <div className="flex items-center gap-4 text-xs text-slate-500 mb-4 pb-4 border-b border-slate-200">
                   <span className="flex items-center gap-1">
-                    <FiHelpCircle size={14} /> {a.question_count} questions
+                    <span>❓</span> {a.question_count} questions
                   </span>
                   {a.time_limit && (
                     <span className="flex items-center gap-1">
-                      <FiClock size={14} /> {a.time_limit} min
+                      <span>⏱️</span> {a.time_limit} min
                     </span>
                   )}
                 </div>
+
+                {/* CTA */}
                 <Link
                   to={`/student/assessments/${a.id}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition"
+                  className="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
-                  Start Assessment <FiArrowRight />
+                  Start Assessment →
                 </Link>
-              </div>
-            </div>
+              </CardBody>
+            </Card>
           ))}
         </div>
       )}
