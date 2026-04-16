@@ -136,6 +136,7 @@ function getNavItems(role) {
         { path: '/student/tasks/recommended', label: 'Recommended', icon: '🎯' },
         { path: '/student/portfolio', label: 'Portfolio', icon: '🎨' },
         { path: '/student/analytics', label: 'Analytics', icon: '📈' },
+        { path: '/student/chat', label: 'AI Chat', icon: '💬' },
       ];
     case 'Mentor':
       return [

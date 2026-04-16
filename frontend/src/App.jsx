@@ -31,6 +31,9 @@ import TaskEvaluationResultPage from './pages/TaskEvaluationResultPage';
 import PortfolioPage from './pages/PortfolioPage';
 import PortfolioItemDetailPage from './pages/PortfolioItemDetailPage';
 
+// Chat page
+import ChatPage from './pages/ChatPage';
+
 // Mentor pages
 import MentorAssignedStudentsPage from './pages/MentorAssignedStudentsPage';
 import MentorStudentDetailPage from './pages/MentorStudentDetailPage';
@@ -78,6 +81,7 @@ function App() {
       <Route path="/student/tasks/mcq/:completionId/:taskId" element={<ProtectedRoute role="Student"><TaskMCQQuizPage /></ProtectedRoute>} />
       <Route path="/student/tasks/evaluation/:evaluationId" element={<ProtectedRoute role="Student"><TaskEvaluationResultPage /></ProtectedRoute>} />
       <Route path="/student/portfolio" element={<ProtectedRoute role="Student"><PortfolioPage /></ProtectedRoute>} />
+      <Route path="/student/chat" element={<ProtectedRoute role="Student"><ChatPage /></ProtectedRoute>} />
       <Route path="/student/portfolio/items/:itemId" element={<ProtectedRoute role="Student"><PortfolioItemDetailPage /></ProtectedRoute>} />
 
       {/* Mentor routes */}
