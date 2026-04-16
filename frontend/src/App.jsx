@@ -18,6 +18,13 @@ import AssessmentResult from './pages/AssessmentResult';
 // Task pages
 import RecommendedTasksPage from './pages/RecommendedTasksPage';
 import MyTasksPage from './pages/MyTasksPage';
+import TaskCompletionPage from './pages/TaskCompletionPage';
+import TaskMCQQuizPage from './pages/TaskMCQQuizPage';
+import TaskEvaluationResultPage from './pages/TaskEvaluationResultPage';
+
+// Portfolio pages
+import PortfolioPage from './pages/PortfolioPage';
+import PortfolioItemDetailPage from './pages/PortfolioItemDetailPage';
 
 // Mentor pages
 import MentorAssignedStudentsPage from './pages/MentorAssignedStudentsPage';
@@ -44,6 +51,11 @@ function App() {
       <Route path="/student/results/:attemptId" element={<ProtectedRoute role="Student"><AssessmentResult /></ProtectedRoute>} />
       <Route path="/student/tasks/recommended" element={<ProtectedRoute role="Student"><RecommendedTasksPage /></ProtectedRoute>} />
       <Route path="/student/tasks/my-tasks" element={<ProtectedRoute role="Student"><MyTasksPage /></ProtectedRoute>} />
+      <Route path="/student/tasks/complete/:assignmentId" element={<ProtectedRoute role="Student"><TaskCompletionPage /></ProtectedRoute>} />
+      <Route path="/student/tasks/mcq/:completionId/:taskId" element={<ProtectedRoute role="Student"><TaskMCQQuizPage /></ProtectedRoute>} />
+      <Route path="/student/tasks/evaluation/:evaluationId" element={<ProtectedRoute role="Student"><TaskEvaluationResultPage /></ProtectedRoute>} />
+      <Route path="/student/portfolio" element={<ProtectedRoute role="Student"><PortfolioPage /></ProtectedRoute>} />
+      <Route path="/student/portfolio/items/:itemId" element={<ProtectedRoute role="Student"><PortfolioItemDetailPage /></ProtectedRoute>} />
 
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={<ProtectedRoute role="Mentor"><MentorDashboard /></ProtectedRoute>} />

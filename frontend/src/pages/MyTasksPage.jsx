@@ -96,28 +96,9 @@ export default function MyTasksPage() {
     }
   };
 
-  const handleCompleteTask = async (taskId) => {
-    try {
-      setUpdating(true);
-      const response = await taskService.updateTaskProgress(taskId, {
-        status: 'completed',
-        progress_percentage: 100,
-      });
-      if (response.success) {
-        setTasks(
-          tasks.map(t => (t.id === taskId ? response.data : t))
-        );
-        setSelectedTask(response.data);
-        alert('Task marked as complete! You can request mentor review.');
-      } else {
-        setError(response.error?.message || 'Failed to complete task');
-      }
-    } catch (err) {
-      setError('Error completing task');
-      console.error(err);
-    } finally {
-      setUpdating(false);
-    }
+  const handleCompleteTask = (taskId) => {
+    // Navigate to task completion page instead of directly marking complete
+    navigate(`/student/tasks/complete/${taskId}`);
   };
 
   const handleRequestReview = async (taskId) => {

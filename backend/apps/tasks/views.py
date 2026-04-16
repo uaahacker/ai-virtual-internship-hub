@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.core.permissions import IsStudent, IsMentor, IsAdmin
 from .models import Task, TaskAssignment, TaskMCQ, TaskCompletion, TaskMCQAttempt, TaskEvaluation
+from apps.portfolios.models import Portfolio, PortfolioItem
 from .serializers import (
     TaskSerializer,
     TaskCreateSerializer,
@@ -24,8 +25,15 @@ from .serializers import (
     TaskMCQAttemptSubmitSerializer,
     TaskEvaluationSerializer,
     TaskEvaluationUpdateSerializer,
+    PortfolioSerializer,
+    PortfolioDetailSerializer,
+    PortfolioUpdateSerializer,
+    PortfolioItemSerializer,
+    PortfolioItemDetailSerializer,
+    PortfolioItemUpdateSerializer,
 )
 from .recommendation_service import TaskRecommendationService
+from .portfolio_service import PortfolioService
 
 
 class TaskListView(APIView):
@@ -587,9 +595,242 @@ class MentorEvaluateTaskView(APIView):
         evaluation.status = 'evaluated'
         evaluation.save()
 
+        # Auto-generate portfolio item when evaluation is completed
+        try:
+            portfolio_item = PortfolioService.create_portfolio_item(evaluation)
+        except Exception as e:
+            # Log error but don't fail the evaluation
+            print(f"Error creating portfolio item: {str(e)}")
+
         result_serializer = TaskEvaluationSerializer(evaluation)
         return Response({
             'success': True,
             'message': 'Task evaluation completed.',
             'data': result_serializer.data
+        })
+
+
+class GetMyPortfolioView(APIView):
+    """
+    GET /api/portfolios/me/
+    Get current user's portfolio.
+    """
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def get(self, request):
+        """Retrieve student's portfolio."""
+        try:
+            portfolio = Portfolio.objects.get(student=request.user)
+        except Portfolio.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Portfolio not found. Complete a task evaluation to generate one.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PortfolioDetailSerializer(portfolio)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })
+
+
+class PortfolioDetailView(APIView):
+    """
+    GET /api/portfolios/<id>/
+    Get specific portfolio (if public or own).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, portfolio_id):
+        """Retrieve portfolio details."""
+        try:
+            portfolio = Portfolio.objects.get(id=portfolio_id)
+        except Portfolio.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Portfolio not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Check permissions: own portfolio or public
+        if portfolio.user != request.user and not portfolio.is_public:
+            return Response({
+                'success': False,
+                'message': 'You do not have permission to view this portfolio.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = PortfolioDetailSerializer(portfolio)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })
+
+
+class UpdatePortfolioView(APIView):
+    """
+    PUT /api/portfolios/<id>/update/
+    Update portfolio info (title, bio, visibility).
+    """
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def put(self, request, portfolio_id):
+        """Update portfolio."""
+        try:
+            portfolio = Portfolio.objects.get(id=portfolio_id)
+        except Portfolio.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Portfolio not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Check ownership
+        if portfolio.user != request.user:
+            return Response({
+                'success': False,
+                'message': 'You can only update your own portfolio.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = PortfolioUpdateSerializer(portfolio, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'message': 'Portfolio updated successfully.',
+                'data': PortfolioDetailSerializer(portfolio).data
+            })
+
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PortfolioItemDetailView(APIView):
+    """
+    GET /api/portfolio-items/<id>/
+    Get portfolio item details.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, item_id):
+        """Retrieve portfolio item details."""
+        try:
+            item = PortfolioItem.objects.get(id=item_id)
+        except PortfolioItem.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Portfolio item not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Check permissions: own item or public portfolio
+        if item.portfolio.user != request.user and not item.portfolio.is_public:
+            return Response({
+                'success': False,
+                'message': 'You do not have permission to view this item.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = PortfolioItemDetailSerializer(item)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })
+
+
+class UpdatePortfolioItemView(APIView):
+    """
+    PUT /api/portfolio-items/<id>/update/
+    Update portfolio item display settings.
+    """
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def put(self, request, item_id):
+        """Update portfolio item."""
+        try:
+            item = PortfolioItem.objects.get(id=item_id)
+        except PortfolioItem.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Portfolio item not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Check ownership
+        if item.portfolio.user != request.user:
+            return Response({
+                'success': False,
+                'message': 'You can only update your own portfolio items.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = PortfolioItemUpdateSerializer(item, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'message': 'Portfolio item updated successfully.',
+                'data': PortfolioItemDetailSerializer(item).data
+            })
+
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PortfolioStatsView(APIView):
+    """
+    GET /api/portfolios/<id>/stats/
+    Get portfolio statistics and analytics.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, portfolio_id):
+        """Retrieve portfolio statistics."""
+        try:
+            portfolio = Portfolio.objects.get(id=portfolio_id)
+        except Portfolio.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Portfolio not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Check permissions
+        if portfolio.user != request.user and not portfolio.is_public:
+            return Response({
+                'success': False,
+                'message': 'You do not have permission to view this portfolio.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        stats = PortfolioService.get_portfolio_stats(portfolio)
+        return Response({
+            'success': True,
+            'data': stats
+        })
+
+
+class ExportPortfolioView(APIView):
+    """
+    GET /api/portfolios/<id>/export/
+    Export portfolio data as JSON.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, portfolio_id):
+        """Export portfolio."""
+        try:
+            portfolio = Portfolio.objects.get(id=portfolio_id)
+        except Portfolio.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Portfolio not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Check permissions
+        if portfolio.user != request.user and not portfolio.is_public:
+            return Response({
+                'success': False,
+                'message': 'You do not have permission to export this portfolio.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        export_data = PortfolioService.export_portfolio_as_json(portfolio)
+        return Response({
+            'success': True,
+            'data': export_data
         })

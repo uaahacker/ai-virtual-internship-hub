@@ -59,6 +59,22 @@ export const taskService = {
   requestMentorReview: (assignmentId) => api.post(
     `/tasks/assignments/${assignmentId}/request-review/`
   ),
+
+  // Task Completion and Evaluation
+  getMCQQuestions: (taskId) => api.get(`/tasks/${taskId}/mcq-questions/`),
+  completeTask: (assignmentId, reflectionText) => api.post(
+    `/tasks/assignments/${assignmentId}/complete/`,
+    { reflective_text: reflectionText }
+  ),
+  submitMCQAnswers: (completionId, answers, durationSeconds = 0) => api.post(
+    `/tasks/completions/${completionId}/submit-mcq/`,
+    { student_answers: answers, duration_seconds: durationSeconds }
+  ),
+  getEvaluation: (evaluationId) => api.get(`/tasks/evaluations/${evaluationId}/`),
+  mentorEvaluateTask: (evaluationId, data) => api.post(
+    `/tasks/evaluations/${evaluationId}/evaluate/`,
+    data
+  ),
 };
 
 export const mentorService = {

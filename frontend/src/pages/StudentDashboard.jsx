@@ -138,6 +138,22 @@ export default function StudentDashboard() {
             </Link>
           </div>
 
+          {/* View Portfolio */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+              📁 My Portfolio
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              View your completed tasks and showcase your achievements.
+            </p>
+            <Link
+              to="/student/portfolio"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition w-full justify-center"
+            >
+              View Portfolio <FiArrowRight />
+            </Link>
+          </div>
+
           {/* Recent Attempts */}
           {attempts.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm p-6">
