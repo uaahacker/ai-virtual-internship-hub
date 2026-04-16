@@ -4,7 +4,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import StudentProfileCard from '../components/StudentProfileCard';
 import { useAuth } from '../contexts/AuthContext';
 import { assessmentService, profileService } from '../services/endpoints';
-import { FiTrendingUp, FiClipboard, FiAward, FiArrowRight } from 'react-icons/fi';
+import { FiTrendingUp, FiClipboard, FiAward, FiArrowRight, FiBarChart2 } from 'react-icons/fi';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -151,6 +151,23 @@ export default function StudentDashboard() {
               className="inline-flex items-center gap-2 px-5 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition w-full justify-center"
             >
               View Portfolio <FiArrowRight />
+            </Link>
+          </div>
+
+          {/* Analytics Dashboard */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+              <FiBarChart2 className="text-blue-600" />
+              Analytics
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Track your progress and view detailed learning analytics.
+            </p>
+            <Link
+              to="/student/analytics"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition w-full justify-center"
+            >
+              View Analytics <FiArrowRight />
             </Link>
           </div>
 

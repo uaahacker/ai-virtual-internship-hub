@@ -1,13 +1,13 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { mentorService } from '../services/endpoints';
-import { FiArrowLeft, FiBarChart3, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { FiArrowLeft, FiBarChart2, FiCheckCircle, FiClock } from 'react-icons/fi';
 
 export default function MentorStudentDetailPage() {
   const { studentId } = useParams();
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const [student, setStudent] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -129,7 +129,7 @@ export default function MentorStudentDetailPage() {
             {/* Assessment Summary */}
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <div className="flex items-center gap-3 mb-4">
-                <FiBarChart3 className="text-blue-600" size={24} />
+                <FiBarChart2 className="text-blue-600" size={24} />
                 <h2 className="text-xl font-bold text-gray-900">Assessment Summary</h2>
               </div>
 

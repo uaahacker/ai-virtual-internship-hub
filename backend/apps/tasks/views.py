@@ -11,6 +11,7 @@ from django.utils import timezone
 from apps.core.permissions import IsStudent, IsMentor, IsAdmin
 from .models import Task, TaskAssignment, TaskMCQ, TaskCompletion, TaskMCQAttempt, TaskEvaluation
 from apps.portfolios.models import Portfolio, PortfolioItem
+from .analytics import StudentAnalyticsService, MentorAnalyticsService, AdminAnalyticsService
 from .serializers import (
     TaskSerializer,
     TaskCreateSerializer,
@@ -834,3 +835,142 @@ class ExportPortfolioView(APIView):
             'success': True,
             'data': export_data
         })
+f r o m   r e s t _ f r a m e w o r k . r e s p o n s e   i m p o r t   R e s p o n s e 
+ 
+ f r o m   r e s t _ f r a m e w o r k   i m p o r t   s t a t u s 
+ 
+ f r o m   r e s t _ f r a m e w o r k . v i e w s   i m p o r t   A P I V i e w 
+ 
+ f r o m   r e s t _ f r a m e w o r k . p e r m i s s i o n s   i m p o r t   I s A u t h e n t i c a t e d 
+ 
+ f r o m   c o r e . p e r m i s s i o n s   i m p o r t   I s S t u d e n t ,   I s M e n t o r ,   I s A d m i n 
+ 
+ f r o m   . a n a l y t i c s   i m p o r t   S t u d e n t A n a l y t i c s S e r v i c e ,   M e n t o r A n a l y t i c s S e r v i c e ,   A d m i n A n a l y t i c s S e r v i c e 
+ 
+ 
+ 
+ 
+ 
+ c l a s s   S t u d e n t A n a l y t i c s V i e w ( A P I V i e w ) : 
+ 
+         " " " 
+ 
+         G E T   / a p i / a n a l y t i c s / s t u d e n t / 
+ 
+         G e t   c o m p r e h e n s i v e   a n a l y t i c s   f o r   l o g g e d - i n   s t u d e n t 
+ 
+         " " " 
+ 
+         p e r m i s s i o n _ c l a s s e s   =   [ I s A u t h e n t i c a t e d ,   I s S t u d e n t ] 
+ 
+ 
+ 
+         d e f   g e t ( s e l f ,   r e q u e s t ) : 
+ 
+                 t r y : 
+ 
+                         a n a l y t i c s   =   S t u d e n t A n a l y t i c s S e r v i c e . g e t _ s t u d e n t _ a n a l y t i c s ( r e q u e s t . u s e r ) 
+ 
+                         r e t u r n   R e s p o n s e ( { 
+ 
+                                 ' s u c c e s s ' :   T r u e , 
+ 
+                                 ' d a t a ' :   a n a l y t i c s 
+ 
+                         } ) 
+ 
+                 e x c e p t   E x c e p t i o n   a s   e r r : 
+ 
+                         r e t u r n   R e s p o n s e ( { 
+ 
+                                 ' s u c c e s s ' :   F a l s e , 
+ 
+                                 ' e r r o r ' :   s t r ( e r r ) 
+ 
+                         } ,   s t a t u s = s t a t u s . H T T P _ 5 0 0 _ I N T E R N A L _ S E R V E R _ E R R O R ) 
+ 
+ 
+ 
+ 
+ 
+ c l a s s   M e n t o r A n a l y t i c s V i e w ( A P I V i e w ) : 
+ 
+         " " " 
+ 
+         G E T   / a p i / a n a l y t i c s / m e n t o r / 
+ 
+         G e t   c o m p r e h e n s i v e   a n a l y t i c s   f o r   l o g g e d - i n   m e n t o r 
+ 
+         " " " 
+ 
+         p e r m i s s i o n _ c l a s s e s   =   [ I s A u t h e n t i c a t e d ,   I s M e n t o r ] 
+ 
+ 
+ 
+         d e f   g e t ( s e l f ,   r e q u e s t ) : 
+ 
+                 t r y : 
+ 
+                         a n a l y t i c s   =   M e n t o r A n a l y t i c s S e r v i c e . g e t _ m e n t o r _ a n a l y t i c s ( r e q u e s t . u s e r ) 
+ 
+                         r e t u r n   R e s p o n s e ( { 
+ 
+                                 ' s u c c e s s ' :   T r u e , 
+ 
+                                 ' d a t a ' :   a n a l y t i c s 
+ 
+                         } ) 
+ 
+                 e x c e p t   E x c e p t i o n   a s   e r r : 
+ 
+                         r e t u r n   R e s p o n s e ( { 
+ 
+                                 ' s u c c e s s ' :   F a l s e , 
+ 
+                                 ' e r r o r ' :   s t r ( e r r ) 
+ 
+                         } ,   s t a t u s = s t a t u s . H T T P _ 5 0 0 _ I N T E R N A L _ S E R V E R _ E R R O R ) 
+ 
+ 
+ 
+ 
+ 
+ c l a s s   A d m i n A n a l y t i c s V i e w ( A P I V i e w ) : 
+ 
+         " " " 
+ 
+         G E T   / a p i / a n a l y t i c s / a d m i n / 
+ 
+         G e t   c o m p r e h e n s i v e   a n a l y t i c s   f o r   a d m i n   d a s h b o a r d 
+ 
+         " " " 
+ 
+         p e r m i s s i o n _ c l a s s e s   =   [ I s A u t h e n t i c a t e d ,   I s A d m i n ] 
+ 
+ 
+ 
+         d e f   g e t ( s e l f ,   r e q u e s t ) : 
+ 
+                 t r y : 
+ 
+                         a n a l y t i c s   =   A d m i n A n a l y t i c s S e r v i c e . g e t _ a d m i n _ a n a l y t i c s ( ) 
+ 
+                         r e t u r n   R e s p o n s e ( { 
+ 
+                                 ' s u c c e s s ' :   T r u e , 
+ 
+                                 ' d a t a ' :   a n a l y t i c s 
+ 
+                         } ) 
+ 
+                 e x c e p t   E x c e p t i o n   a s   e r r : 
+ 
+                         r e t u r n   R e s p o n s e ( { 
+ 
+                                 ' s u c c e s s ' :   F a l s e , 
+ 
+                                 ' e r r o r ' :   s t r ( e r r ) 
+ 
+                         } ,   s t a t u s = s t a t u s . H T T P _ 5 0 0 _ I N T E R N A L _ S E R V E R _ E R R O R ) 
+ 
+ 

@@ -10,6 +10,11 @@ import StudentDashboard from './pages/StudentDashboard';
 import MentorDashboard from './pages/MentorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 
+// Analytics pages
+import StudentAnalyticsDashboard from './pages/StudentAnalyticsDashboard';
+import MentorAnalyticsDashboard from './pages/MentorAnalyticsDashboard';
+import AdminAnalyticsDashboard from './pages/AdminAnalyticsDashboard';
+
 // Assessment pages
 import AssessmentList from './pages/AssessmentList';
 import TakeAssessment from './pages/TakeAssessment';
@@ -36,16 +41,34 @@ import MentorReviewTaskPage from './pages/MentorReviewTaskPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
-  const { user } = useAuth();
+  try {
+    const { user, loading } = useAuth();
+    console.log('🔍 App render - loading:', loading, 'user:', user?.id);
 
-  return (
-    <Routes>
+    if (loading) {
+      console.log('🔍 App - showing loading spinner');
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary-600/20 mb-4">
+              <div className="w-8 h-8 border-3 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      );
+    }
+
+    console.log('🔍 App - rendering routes, user logged in:', !!user);
+    return (
+      <Routes>
       {/* Public routes */}
       <Route path="/login" element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} />} />
       <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to={getDashboardPath(user.role)} />} />
 
       {/* Student routes */}
       <Route path="/student/dashboard" element={<ProtectedRoute role="Student"><StudentDashboard /></ProtectedRoute>} />
+      <Route path="/student/analytics" element={<ProtectedRoute role="Student"><StudentAnalyticsDashboard /></ProtectedRoute>} />
       <Route path="/student/assessments" element={<ProtectedRoute role="Student"><AssessmentList /></ProtectedRoute>} />
       <Route path="/student/assessments/:id" element={<ProtectedRoute role="Student"><TakeAssessment /></ProtectedRoute>} />
       <Route path="/student/results/:attemptId" element={<ProtectedRoute role="Student"><AssessmentResult /></ProtectedRoute>} />
@@ -59,6 +82,7 @@ function App() {
 
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={<ProtectedRoute role="Mentor"><MentorDashboard /></ProtectedRoute>} />
+      <Route path="/mentor/analytics" element={<ProtectedRoute role="Mentor"><MentorAnalyticsDashboard /></ProtectedRoute>} />
       <Route path="/mentor/students" element={<ProtectedRoute role="Mentor"><MentorAssignedStudentsPage /></ProtectedRoute>} />
       <Route path="/mentor/students/:studentId" element={<ProtectedRoute role="Mentor"><MentorStudentDetailPage /></ProtectedRoute>} />
       <Route path="/mentor/reviews" element={<ProtectedRoute role="Mentor"><MentorPendingReviewsPage /></ProtectedRoute>} />
@@ -66,12 +90,24 @@ function App() {
 
       {/* Admin routes */}
       <Route path="/admin/dashboard" element={<ProtectedRoute role="Admin"><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/admin/analytics" element={<ProtectedRoute role="Admin"><AdminAnalyticsDashboard /></ProtectedRoute>} />
 
       {/* Default redirect */}
       <Route path="/" element={<Navigate to="/login" />} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
-  );
+    );
+  } catch (err) {
+    console.error('App rendering error:', err);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-red-50">
+        <div className="text-center">
+          <p className="text-red-600 font-semibold mb-2">App Error</p>
+          <p className="text-gray-600 text-sm">{err.message}</p>
+        </div>
+      </div>
+    );
+  }
 }
 
 function getDashboardPath(role) {

@@ -367,22 +367,3 @@ export default function AssessmentResult() {
     </DashboardLayout>
   );
 }
-
-      {/* Actions */}
-      <div className="mt-6 flex gap-4">
-        <Link
-          to="/student/assessments"
-          className="px-5 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-semibold hover:bg-primary-700 transition"
-        >
-          Take Another Assessment
-        </Link>
-        <Link
-          to="/student/dashboard"
-          className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-        >
-          Back to Dashboard
-        </Link>
-      </div>
-    </DashboardLayout>
-  );
-}

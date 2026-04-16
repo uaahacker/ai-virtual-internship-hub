@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, API_BASE_URL } from '../services/api';
+import api from '../services/api';
 
 export default function PortfolioPage() {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export default function PortfolioPage() {
       setError(null);
 
       // Fetch portfolio
-      const portfolioRes = await apiClient.get('/api/tasks/portfolios/me/');
+      const portfolioRes = await api.get('/tasks/portfolios/me/');
       if (portfolioRes.data.success) {
         setPortfolio(portfolioRes.data.data);
         setFormData({
@@ -38,8 +38,8 @@ export default function PortfolioPage() {
 
         // Fetch stats
         try {
-          const statsRes = await apiClient.get(
-            `/api/tasks/portfolios/${portfolioRes.data.data.id}/stats/`
+          const statsRes = await api.get(
+            `/tasks/portfolios/${portfolioRes.data.data.id}/stats/`
           );
           if (statsRes.data.success) {
             setStats(statsRes.data.data);
@@ -58,8 +58,8 @@ export default function PortfolioPage() {
   const handleUpdatePortfolio = async (e) => {
     e.preventDefault();
     try {
-      const res = await apiClient.put(
-        `/api/tasks/portfolios/${portfolio.id}/update/`,
+      const res = await api.put(
+        `/tasks/portfolios/${portfolio.id}/update/`,
         formData
       );
       if (res.data.success) {
@@ -82,8 +82,8 @@ export default function PortfolioPage() {
 
   const handleExport = async () => {
     try {
-      const res = await apiClient.get(
-        `/api/tasks/portfolios/${portfolio.id}/export/`
+      const res = await api.get(
+        `/tasks/portfolios/${portfolio.id}/export/`
       );
       if (res.data.success) {
         // Download JSON file

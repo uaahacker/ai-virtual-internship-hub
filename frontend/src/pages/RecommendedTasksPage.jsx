@@ -1,11 +1,11 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
-import { taskService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { taskService } from '../services/endpoints';
 import TaskCard from '../components/TaskCard';
 
 export default function RecommendedTasksPage() {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);

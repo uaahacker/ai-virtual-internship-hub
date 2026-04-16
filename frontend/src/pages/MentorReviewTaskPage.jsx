@@ -1,13 +1,13 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { mentorService } from '../services/endpoints';
 import { FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
 
 export default function MentorReviewTaskPage() {
   const { assignmentId } = useParams();
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const [review, setReview] = useState(null);
   const [feedback, setFeedback] = useState('');
   const [status, setStatus] = useState('approved');

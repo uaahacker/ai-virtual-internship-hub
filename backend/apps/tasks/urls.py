@@ -25,6 +25,9 @@ from .views import (
     UpdatePortfolioItemView,
     PortfolioStatsView,
     ExportPortfolioView,
+    StudentAnalyticsView,
+    MentorAnalyticsView,
+    AdminAnalyticsView,
 )
 
 app_name = 'tasks'
@@ -64,4 +67,9 @@ urlpatterns = [
     path('portfolios/<int:portfolio_id>/export/', ExportPortfolioView.as_view(), name='portfolio-export'),
     path('portfolio-items/<int:item_id>/', PortfolioItemDetailView.as_view(), name='portfolio-item-detail'),
     path('portfolio-items/<int:item_id>/update/', UpdatePortfolioItemView.as_view(), name='portfolio-item-update'),
+
+    # Analytics
+    path('analytics/student/', StudentAnalyticsView.as_view(), name='student-analytics'),
+    path('analytics/mentor/', MentorAnalyticsView.as_view(), name='mentor-analytics'),
+    path('analytics/admin/', AdminAnalyticsView.as_view(), name='admin-analytics'),
 ]

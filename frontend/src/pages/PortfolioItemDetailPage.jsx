@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiClient } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 
 export default function PortfolioItemDetailPage() {
   const { itemId } = useParams();
@@ -20,7 +21,7 @@ export default function PortfolioItemDetailPage() {
       setLoading(true);
       setError(null);
 
-      const res = await apiClient.get(`/api/tasks/portfolio-items/${itemId}/`);
+      const res = await api.get(`/tasks/portfolio-items/${itemId}/`);
       if (res.data.success) {
         setItem(res.data.data);
         setFormData({
@@ -38,8 +39,8 @@ export default function PortfolioItemDetailPage() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const res = await apiClient.put(
-        `/api/tasks/portfolio-items/${itemId}/update/`,
+      const res = await api.put(
+        `/tasks/portfolio-items/${itemId}/update/`,
         formData
       );
       if (res.data.success) {

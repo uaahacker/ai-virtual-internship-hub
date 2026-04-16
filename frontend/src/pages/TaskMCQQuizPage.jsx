@@ -1,12 +1,12 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { taskService } from '../services/endpoints';
 import { FiCheckCircle, FiArrowRight, FiArrowLeft, FiClock } from 'react-icons/fi';
 
 export default function TaskMCQQuizPage() {
   const { completionId, taskId } = useParams();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [questions, setQuestions] = useState([]);

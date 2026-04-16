@@ -88,3 +88,14 @@ export const mentorService = {
   ),
   autoAssignMentors: () => api.post('/auth/mentor/auto-assign/'),
 };
+
+export const analyticsService = {
+  // Student analytics
+  getStudentAnalytics: () => api.get('/tasks/analytics/student/'),
+
+  // Mentor analytics
+  getMentorAnalytics: () => api.get('/tasks/analytics/mentor/'),
+
+  // Admin analytics
+  getAdminAnalytics: () => api.get('/tasks/analytics/admin/'),
+};

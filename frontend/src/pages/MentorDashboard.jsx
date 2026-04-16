@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import MentorProfileCard from '../components/MentorProfileCard';
 import { useAuth } from '../contexts/AuthContext';
 import { profileService, mentorService } from '../services/endpoints';
-import { FiUsers, FiClipboard, FiMessageSquare, FiArrowRight } from 'react-icons/fi';
+import { FiUsers, FiClipboard, FiMessageSquare, FiArrowRight, FiBarChart2 } from 'react-icons/fi';
 
 export default function MentorDashboard() {
   const { user } = useAuth();
@@ -191,6 +191,27 @@ export default function MentorDashboard() {
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Analytics Section */}
+      <div className="mt-8">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <FiBarChart2 className="text-blue-600" size={28} />
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Analytics Dashboard</h2>
+                <p className="text-sm text-gray-600">Track your mentoring progress and student performance</p>
+              </div>
+            </div>
+            <Link
+              to="/mentor/analytics"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
+            >
+              View Analytics <FiArrowRight />
+            </Link>
+          </div>
         </div>
       </div>
     </DashboardLayout>

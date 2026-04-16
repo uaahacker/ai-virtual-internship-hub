@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
+  console.log('🔍 ProtectedRoute - role:', role, 'loading:', loading, 'user:', user?.id);
 
   if (loading) {
     return (
@@ -13,6 +14,7 @@ export default function ProtectedRoute({ children, role }) {
   }
 
   if (!user) {
+    console.log('🔍 ProtectedRoute - no user, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
@@ -23,8 +25,10 @@ export default function ProtectedRoute({ children, role }) {
       Mentor: '/mentor/dashboard',
       Admin: '/admin/dashboard',
     };
+    console.log('🔍 ProtectedRoute - wrong role, redirecting to:', dashPath[user.role]);
     return <Navigate to={dashPath[user.role] || '/login'} replace />;
   }
 
+  console.log('✅ ProtectedRoute - rendering protected component');
   return children;
 }

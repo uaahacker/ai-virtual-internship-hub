@@ -1,13 +1,13 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { taskService } from '../services/endpoints';
 import { FiTrendingUp, FiCheckCircle, FiAlertCircle, FiHome, FiRefreshCw } from 'react-icons/fi';
 
 export default function TaskEvaluationResultPage() {
   const { evaluationId } = useParams();
   const location = useLocation();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [evaluation, setEvaluation] = useState(null);
