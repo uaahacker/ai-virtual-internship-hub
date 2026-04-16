@@ -86,7 +86,7 @@ export default function StudentDashboard() {
             title="📊 Your Skills"
             subtitle={`${skills.length} domain(s) assessed`}
             action={
-              <Link to="/assessments" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+              <Link to="/student/assessments" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
                 Take More →
               </Link>
             }
@@ -104,7 +104,7 @@ export default function StudentDashboard() {
                 description="Start by taking your first assessment to build your skill profile"
                 action={
                   <Link
-                    to="/assessments"
+                    to="/student/assessments"
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
                   >
                     Browse Assessments
@@ -182,7 +182,7 @@ export default function StudentDashboard() {
                 Evaluate your skills and get personalized recommendations
               </p>
               <Link
-                to="/assessments"
+                to="/student/assessments"
                 className="block px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-center"
               >
                 Browse →
@@ -199,7 +199,7 @@ export default function StudentDashboard() {
                 Complete tailored tasks based on your skill level
               </p>
               <Link
-                to="/tasks/recommended"
+                to="/student/tasks/recommended"
                 className="block px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-center"
               >
                 Explore →
@@ -216,7 +216,7 @@ export default function StudentDashboard() {
                 Showcase your completed projects and achievements
               </p>
               <Link
-                to="/portfolio"
+                to="/student/portfolio"
                 className="block px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-center"
               >
                 View →
@@ -224,19 +224,19 @@ export default function StudentDashboard() {
             </CardBody>
           </Card>
 
-          {/* Chat AI CTA */}
+          {/* Analytics CTA */}
           <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
             <CardBody className="text-center">
-              <div className="text-4xl mb-3">💬</div>
-              <h3 className="font-semibold text-slate-900 mb-2">Chat with AI</h3>
+              <div className="text-4xl mb-3">📈</div>
+              <h3 className="font-semibold text-slate-900 mb-2">View Analytics</h3>
               <p className="text-sm text-slate-700 mb-4">
-                Get personalized career guidance and tips
+                Track your progress and performance metrics
               </p>
               <Link
-                to="/chat"
+                to="/student/analytics"
                 className="block px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors text-center"
               >
-                Start →
+                View →
               </Link>
             </CardBody>
           </Card>

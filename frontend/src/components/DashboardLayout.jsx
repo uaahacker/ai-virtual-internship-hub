@@ -132,25 +132,22 @@ function getNavItems(role) {
     case 'Student':
       return [
         { path: '/student/dashboard', label: 'Dashboard', icon: '📊' },
-        { path: '/assessments', label: 'Assessments', icon: '📋' },
-        { path: '/tasks/recommended', label: 'Recommended', icon: '🎯' },
-        { path: '/portfolio', label: 'Portfolio', icon: '🎨' },
-        { path: '/chat', label: 'Chat AI', icon: '💬' },
+        { path: '/student/assessments', label: 'Assessments', icon: '📋' },
+        { path: '/student/tasks/recommended', label: 'Recommended', icon: '🎯' },
+        { path: '/student/portfolio', label: 'Portfolio', icon: '🎨' },
+        { path: '/student/analytics', label: 'Analytics', icon: '📈' },
       ];
     case 'Mentor':
       return [
         { path: '/mentor/dashboard', label: 'Dashboard', icon: '📊' },
         { path: '/mentor/students', label: 'Students', icon: '👥' },
-        { path: '/mentor/assessments', label: 'Assessments', icon: '📋' },
         { path: '/mentor/reviews', label: 'Reviews', icon: '✓' },
+        { path: '/mentor/analytics', label: 'Analytics', icon: '📈' },
       ];
     case 'Admin':
       return [
         { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-        { path: '/admin/users', label: 'Users', icon: '👥' },
-        { path: '/admin/assessments', label: 'Assessments', icon: '📋' },
-        { path: '/admin/tasks', label: 'Tasks', icon: '🎯' },
-        { path: '/admin/reports', label: 'Reports', icon: '📈' },
+        { path: '/admin/analytics', label: 'Analytics', icon: '📊' },
       ];
     default:
       return [];
