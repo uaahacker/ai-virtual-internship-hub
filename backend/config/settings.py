@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'apps.submissions',
     'apps.portfolios',
     'apps.notifications',
+    'apps.chatbot',
 ]
 
 MIDDLEWARE = [
