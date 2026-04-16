@@ -218,3 +218,7 @@ fyp/
 
 This project is part of an academic Final Year Project (FYP).
 sdds
+
+assign student to mentor or mentor ka see all student and can also evalute
+fix frontend make it look cool and good 
+add task like internship task user can ask for mentor review(student choice)
