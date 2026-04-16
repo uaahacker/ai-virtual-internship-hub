@@ -71,5 +71,22 @@ class AttemptResultSerializer(serializers.ModelSerializer):
             'id', 'assessment', 'assessment_title', 'assessment_domain',
             'score', 'total_questions', 'percentage',
             'skill_level', 'recommended_domains', 'attempted_at',
+            'detailed_breakdown', 'strengths', 'weaknesses', 'next_steps',
+        ]
+        read_only_fields = fields
+
+
+class AttemptDetailedSerializer(serializers.ModelSerializer):
+    """Detailed result including question-by-question analysis and recommendations."""
+    assessment_title = serializers.CharField(source='assessment.title', read_only=True)
+    assessment_domain = serializers.CharField(source='assessment.domain', read_only=True)
+
+    class Meta:
+        model = AssessmentAttempt
+        fields = [
+            'id', 'assessment', 'assessment_title', 'assessment_domain',
+            'score', 'total_questions', 'percentage',
+            'skill_level', 'recommended_domains', 'attempted_at',
+            'detailed_breakdown', 'strengths', 'weaknesses', 'next_steps',
         ]
         read_only_fields = fields

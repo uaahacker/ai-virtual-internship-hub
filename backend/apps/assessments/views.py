@@ -15,7 +15,7 @@ from .serializers import (
     SubmitAnswersSerializer,
     AttemptResultSerializer,
 )
-from .recommendation import generate_recommendation
+from .recommendation import generate_recommendation, calculate_performance_breakdown
 
 
 class AssessmentListView(APIView):
@@ -107,7 +107,43 @@ class SubmitAssessmentView(APIView):
         recommendation = generate_recommendation(assessment.domain, percentage)
         skill_level = recommendation['skill_level']
 
-        # 5) Store attempt
+        # 4.5) Calculate detailed breakdown and analysis
+        detailed_breakdown = calculate_performance_breakdown(questions, submitted_answers)
+        
+        # Calculate strengths and weaknesses based on performance
+        correct_questions = [
+            q for q in questions 
+            if submitted_answers.get(str(q.id)) == q.correct_option
+        ]
+        incorrect_questions = [
+            q for q in questions 
+            if submitted_answers.get(str(q.id)) != q.correct_option
+        ]
+        
+        strengths = [
+            f"Correctly answered {len(correct_questions)} out of {total} questions"
+        ]
+        if correct_questions:
+            strengths.append(
+                f"Strong grasp of core concepts ({(len(correct_questions)/total)*100:.0f}% accuracy)"
+            )
+        
+        weaknesses = []
+        if incorrect_questions:
+            weak_pct = (len(incorrect_questions) / total) * 100
+            weaknesses.append(
+                f"Need improvement in {len(incorrect_questions)} areas ({weak_pct:.0f}% of questions)"
+            )
+            if skill_level == 'Advanced':
+                weaknesses.append("Focus on the few challenging areas to maintain excellence")
+            elif skill_level == 'Intermediate':
+                weaknesses.append("Review the concepts you found challenging")
+            else:
+                weaknesses.append("Prioritize studying the fundamental concepts you missed")
+        
+        next_steps = recommendation.get('improvement_areas', [])
+        
+        # 5) Store attempt with detailed analysis
         attempt = AssessmentAttempt.objects.create(
             student=request.user,
             assessment=assessment,
@@ -117,6 +153,10 @@ class SubmitAssessmentView(APIView):
             percentage=round(percentage, 2),
             skill_level=skill_level,
             recommended_domains=[recommendation],
+            detailed_breakdown=detailed_breakdown,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            next_steps=next_steps,
         )
 
         # 6) Return result

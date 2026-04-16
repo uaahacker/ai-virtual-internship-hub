@@ -5,6 +5,7 @@ Serializers for authentication and user management.
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from .models import StudentProfile, MentorProfile
 
 User = get_user_model()
 
@@ -51,3 +52,99 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'name', 'email', 'role', 'status', 'created_at']
         read_only_fields = fields
+
+
+class StudentProfileSerializer(serializers.ModelSerializer):
+    """Serializer for StudentProfile with nested user data."""
+
+    user_name = serializers.CharField(source='user.name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    mentor_name = serializers.CharField(source='mentor_assigned.name', read_only=True, allow_null=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = [
+            'id', 'user', 'user_name', 'user_email',
+            'bio',
+            'selected_skills',
+            'preferred_domains',
+            'assessment_summary',
+            'skill_scores_by_domain',
+            'strongest_domain',
+            'weakest_domain',
+            'progress_score',
+            'completed_tasks_count',
+            'mentor_assigned', 'mentor_name',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'user', 'user_name', 'user_email',
+            'assessment_summary', 'skill_scores_by_domain',
+            'strongest_domain', 'weakest_domain', 'progress_score',
+            'completed_tasks_count', 'created_at', 'updated_at',
+        ]
+
+
+class MentorProfileSerializer(serializers.ModelSerializer):
+    """Serializer for MentorProfile with nested user data."""
+
+    user_name = serializers.CharField(source='user.name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+
+    class Meta:
+        model = MentorProfile
+        fields = [
+            'id', 'user', 'user_name', 'user_email',
+            'expertise_domains', 'bio', 'max_students', 
+            'current_student_count', 'rating',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'user', 'user_name', 'user_email',
+            'current_student_count', 'rating', 'created_at', 'updated_at',
+        ]
+
+
+class MentorFeedbackSerializer(serializers.Serializer):
+    """Serializer for submitting mentor feedback on tasks."""
+    feedback = serializers.CharField(max_length=1000, required=True)
+    approval_status = serializers.ChoiceField(
+        choices=['approved', 'needs_revision'],
+        required=True
+    )
+
+
+class MentorAssignmentSerializer(serializers.Serializer):
+    """Serializer for assigning mentor to student."""
+    mentor_id = serializers.IntegerField(required=True)
+    reason = serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+
+class StudentProfileDetailSerializer(serializers.ModelSerializer):
+    """Detailed student profile for mentor dashboard."""
+    
+    user_name = serializers.CharField(source='user.name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = [
+            'id', 'user_name', 'user_email', 'bio',
+            'preferred_domains', 'selected_skills',
+            'strongest_domain', 'weakest_domain',
+            'progress_score', 'completed_tasks_count',
+            'assessment_summary', 'skill_scores_by_domain',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = fields
+
+
+class AssignedStudentListSerializer(serializers.Serializer):
+    """Simplified student list for mentor's dashboard."""
+    student_id = serializers.IntegerField()
+    student_name = serializers.CharField()
+    student_email = serializers.CharField()
+    preferred_domains = serializers.ListField()
+    progress_score = serializers.FloatField()
+    completed_tasks_count = serializers.IntegerField()
+    pending_review_count = serializers.IntegerField()

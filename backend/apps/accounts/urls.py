@@ -3,7 +3,14 @@ URL routes for accounts/auth app.
 """
 
 from django.urls import path
-from .views import RegisterView, LoginView, LogoutView, MeView, AdminUserListView
+from .views import (
+    RegisterView, LoginView, LogoutView, MeView, AdminUserListView,
+    StudentProfileView, StudentProfileDetailView,
+    MentorProfileView, MentorProfileDetailView,
+    MentorAssignedStudentsView, MentorStudentDetailView,
+    MentorPendingReviewsView, MentorSubmitReviewView,
+    AutoAssignMentorView,
+)
 
 urlpatterns = [
     path('register', RegisterView.as_view(), name='auth-register'),
@@ -13,4 +20,19 @@ urlpatterns = [
 
     # Admin endpoint (mounted under /api/auth/ but logically admin)
     path('admin/users', AdminUserListView.as_view(), name='admin-users'),
+
+    # Profile endpoints
+    path('profiles/student/', StudentProfileView.as_view(), name='student-profile'),
+    path('profiles/student/<int:student_id>/', StudentProfileDetailView.as_view(), name='student-profile-detail'),
+    path('profiles/mentor/', MentorProfileView.as_view(), name='mentor-profile'),
+    path('profiles/mentor/<int:mentor_id>/', MentorProfileDetailView.as_view(), name='mentor-profile-detail'),
+
+    # Mentor dashboard endpoints
+    path('mentor/assigned-students/', MentorAssignedStudentsView.as_view(), name='mentor-assigned-students'),
+    path('mentor/students/<int:student_id>/', MentorStudentDetailView.as_view(), name='mentor-student-detail'),
+    path('mentor/pending-reviews/', MentorPendingReviewsView.as_view(), name='mentor-pending-reviews'),
+    path('mentor/reviews/<int:assignment_id>/submit/', MentorSubmitReviewView.as_view(), name='mentor-submit-review'),
+    
+    # Auto-assign mentor
+    path('mentor/auto-assign/', AutoAssignMentorView.as_view(), name='auto-assign-mentor'),
 ]

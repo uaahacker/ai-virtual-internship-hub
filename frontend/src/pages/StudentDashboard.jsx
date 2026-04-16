@@ -1,20 +1,33 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
+import StudentProfileCard from '../components/StudentProfileCard';
 import { useAuth } from '../contexts/AuthContext';
-import { assessmentService } from '../services/endpoints';
+import { assessmentService, profileService } from '../services/endpoints';
 import { FiTrendingUp, FiClipboard, FiAward, FiArrowRight } from 'react-icons/fi';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
   const [attempts, setAttempts] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    assessmentService.myAttempts()
-      .then((res) => setAttempts(res.data.data || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const loadData = async () => {
+      try {
+        const [attemptsRes, profileRes] = await Promise.all([
+          assessmentService.myAttempts(),
+          profileService.getStudentProfile(),
+        ]);
+        setAttempts(attemptsRes.data.data || []);
+        setProfile(profileRes.data.data);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
   // Derive skill overview from latest attempts per domain
@@ -48,6 +61,13 @@ export default function StudentDashboard() {
         </h1>
         <p className="text-gray-500 mt-1">Here's your skill overview and assessment history.</p>
       </div>
+
+      {/* Profile Card */}
+      {!loading && (
+        <div className="mb-8">
+          <StudentProfileCard profile={profile} user={user} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Skill Overview Card */}

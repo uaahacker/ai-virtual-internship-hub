@@ -15,6 +15,16 @@ import AssessmentList from './pages/AssessmentList';
 import TakeAssessment from './pages/TakeAssessment';
 import AssessmentResult from './pages/AssessmentResult';
 
+// Task pages
+import RecommendedTasksPage from './pages/RecommendedTasksPage';
+import MyTasksPage from './pages/MyTasksPage';
+
+// Mentor pages
+import MentorAssignedStudentsPage from './pages/MentorAssignedStudentsPage';
+import MentorStudentDetailPage from './pages/MentorStudentDetailPage';
+import MentorPendingReviewsPage from './pages/MentorPendingReviewsPage';
+import MentorReviewTaskPage from './pages/MentorReviewTaskPage';
+
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -32,9 +42,15 @@ function App() {
       <Route path="/student/assessments" element={<ProtectedRoute role="Student"><AssessmentList /></ProtectedRoute>} />
       <Route path="/student/assessments/:id" element={<ProtectedRoute role="Student"><TakeAssessment /></ProtectedRoute>} />
       <Route path="/student/results/:attemptId" element={<ProtectedRoute role="Student"><AssessmentResult /></ProtectedRoute>} />
+      <Route path="/student/tasks/recommended" element={<ProtectedRoute role="Student"><RecommendedTasksPage /></ProtectedRoute>} />
+      <Route path="/student/tasks/my-tasks" element={<ProtectedRoute role="Student"><MyTasksPage /></ProtectedRoute>} />
 
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={<ProtectedRoute role="Mentor"><MentorDashboard /></ProtectedRoute>} />
+      <Route path="/mentor/students" element={<ProtectedRoute role="Mentor"><MentorAssignedStudentsPage /></ProtectedRoute>} />
+      <Route path="/mentor/students/:studentId" element={<ProtectedRoute role="Mentor"><MentorStudentDetailPage /></ProtectedRoute>} />
+      <Route path="/mentor/reviews" element={<ProtectedRoute role="Mentor"><MentorPendingReviewsPage /></ProtectedRoute>} />
+      <Route path="/mentor/reviews/:assignmentId" element={<ProtectedRoute role="Mentor"><MentorReviewTaskPage /></ProtectedRoute>} />
 
       {/* Admin routes */}
       <Route path="/admin/dashboard" element={<ProtectedRoute role="Admin"><AdminDashboard /></ProtectedRoute>} />

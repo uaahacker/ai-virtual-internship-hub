@@ -129,6 +129,27 @@ class AssessmentAttempt(models.Model):
         default=list,
         help_text='List of recommended domain/career objects',
     )
+    # Enhanced fields for detailed analysis
+    detailed_breakdown = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Per-question analysis {question_id: {text, submitted, correct, explanation}}',
+    )
+    strengths = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of topics/concepts answered correctly',
+    )
+    weaknesses = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of topics/concepts answered incorrectly',
+    )
+    next_steps = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Actionable next steps based on performance',
+    )
     attempted_at = models.DateTimeField(default=timezone.now)
 
     class Meta:

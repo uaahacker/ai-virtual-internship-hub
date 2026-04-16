@@ -14,7 +14,7 @@ import {
   FiChevronUp,
 } from 'react-icons/fi';
 
-export default function AssessmentResult() {
+export default function AssessmentResultEnhanced() {
   const { attemptId } = useParams();
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -94,6 +94,8 @@ export default function AssessmentResult() {
 
   const cfg = levelConfig[level] || levelConfig.Beginner;
   const LevelIcon = cfg.icon;
+
+  const getQuestionNumber = (index) => index + 1;
 
   return (
     <DashboardLayout>
@@ -326,7 +328,7 @@ export default function AssessmentResult() {
                     </span>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900">
-                        Question {idx + 1}
+                        Question {getQuestionNumber(idx)}
                       </p>
                       <p className="text-sm text-gray-700 mt-1">{details.text}</p>
                       <div className="mt-2 text-sm">
@@ -363,25 +365,6 @@ export default function AssessmentResult() {
         >
           Print Results
         </button>
-      </div>
-    </DashboardLayout>
-  );
-}
-
-      {/* Actions */}
-      <div className="mt-6 flex gap-4">
-        <Link
-          to="/student/assessments"
-          className="px-5 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-semibold hover:bg-primary-700 transition"
-        >
-          Take Another Assessment
-        </Link>
-        <Link
-          to="/student/dashboard"
-          className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-        >
-          Back to Dashboard
-        </Link>
       </div>
     </DashboardLayout>
   );

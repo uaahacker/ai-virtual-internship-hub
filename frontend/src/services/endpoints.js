@@ -15,6 +15,60 @@ export const assessmentService = {
   myAttempts: () => api.get('/assessments/my-attempts/'),
 };
 
+export const profileService = {
+  // Student Profile
+  getStudentProfile: () => api.get('/auth/profiles/student/'),
+  updateStudentProfile: (data) => api.put('/auth/profiles/student/', data),
+  getStudentProfileDetail: (studentId) => api.get(`/auth/profiles/student/${studentId}/`),
+
+  // Mentor Profile
+  getMentorProfile: () => api.get('/auth/profiles/mentor/'),
+  updateMentorProfile: (data) => api.put('/auth/profiles/mentor/', data),
+  getMentorProfileDetail: (mentorId) => api.get(`/auth/profiles/mentor/${mentorId}/`),
+};
+
 export const adminService = {
   getUsers: () => api.get('/auth/admin/users'),
+};
+
+export const taskService = {
+  // Task list and details
+  list: () => api.get('/tasks/', { params: {} }),
+  listByDomain: (domain) => api.get('/tasks/', { params: { domain } }),
+  detail: (id) => api.get(`/tasks/${id}/`),
+  create: (data) => api.post('/tasks/create/', data),
+
+  // Recommendations
+  getRecommendations: () => api.get('/tasks/recommended/'),
+
+  // My tasks
+  getMyTasks: (status) => status
+    ? api.get('/tasks/my-tasks/', { params: { status } })
+    : api.get('/tasks/my-tasks/'),
+
+  // Task assignment management
+  getAssignmentDetail: (assignmentId) => api.get(`/tasks/assignments/${assignmentId}/`),
+  acceptTask: (assignmentId, accept) => api.post(
+    `/tasks/assignments/${assignmentId}/accept/`,
+    { accept }
+  ),
+  updateTaskProgress: (assignmentId, data) => api.put(
+    `/tasks/assignments/${assignmentId}/update/`,
+    data
+  ),
+  requestMentorReview: (assignmentId) => api.post(
+    `/tasks/assignments/${assignmentId}/request-review/`
+  ),
+};
+
+export const mentorService = {
+  // Mentor dashboard
+  getAssignedStudents: () => api.get('/auth/mentor/assigned-students/'),
+  getStudentDetail: (studentId) => api.get(`/auth/mentor/students/${studentId}/`),
+  getPendingReviews: () => api.get('/auth/mentor/pending-reviews/'),
+  submitReview: (assignmentId, data) => api.post(
+    `/auth/mentor/reviews/${assignmentId}/submit/`,
+    data
+  ),
+  autoAssignMentors: () => api.post('/auth/mentor/auto-assign/'),
 };

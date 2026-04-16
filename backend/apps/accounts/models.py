@@ -67,3 +67,120 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.name} ({self.email}) - {self.role}"
+
+
+class StudentProfile(models.Model):
+    """
+    Extended profile for Student users.
+    Collection: student_profiles
+    """
+
+    SKILL_LEVELS = [
+        ('Beginner', 'Beginner'),
+        ('Intermediate', 'Intermediate'),
+        ('Advanced', 'Advanced'),
+    ]
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='student_profile',
+        limit_choices_to={'role': 'Student'},
+    )
+    bio = models.TextField(blank=True, default='')
+    selected_skills = models.JSONField(
+        default=list,
+        help_text='List of skill names student is interested in',
+    )
+    preferred_domains = models.JSONField(
+        default=list,
+        help_text='List of preferred learning domains',
+    )
+    assessment_summary = models.JSONField(
+        default=dict,
+        help_text='Summary of assessment attempts {domain: [scores]}',
+    )
+    skill_scores_by_domain = models.JSONField(
+        default=dict,
+        help_text='Highest score per domain {domain: score}',
+    )
+    strongest_domain = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        help_text='Domain with highest score',
+    )
+    weakest_domain = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        help_text='Domain with lowest score',
+    )
+    progress_score = models.FloatField(
+        default=0.0,
+        help_text='Overall progress score (0-100)',
+    )
+    completed_tasks_count = models.IntegerField(
+        default=0,
+        help_text='Number of tasks completed',
+    )
+    mentor_assigned = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='mentored_students',
+        limit_choices_to={'role': 'Mentor'},
+        help_text='Assigned mentor, if any',
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'student_profiles'
+        verbose_name = 'Student Profile'
+        verbose_name_plural = 'Student Profiles'
+
+    def __str__(self):
+        return f"Profile: {self.user.name}"
+
+
+class MentorProfile(models.Model):
+    """
+    Extended profile for Mentor users.
+    Collection: mentor_profiles
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='mentor_profile',
+        limit_choices_to={'role': 'Mentor'},
+    )
+    expertise_domains = models.JSONField(
+        default=list,
+        help_text='List of domains mentor specializes in',
+    )
+    bio = models.TextField(blank=True, default='', help_text='Mentor biography')
+    max_students = models.IntegerField(
+        default=10,
+        help_text='Maximum number of students mentor can supervise',
+    )
+    current_student_count = models.IntegerField(
+        default=0,
+        help_text='Current number of assigned students',
+    )
+    rating = models.FloatField(
+        default=0.0,
+        help_text='Mentor rating (0-5) based on student feedback',
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'mentor_profiles'
+        verbose_name = 'Mentor Profile'
+        verbose_name_plural = 'Mentor Profiles'
+
+    def __str__(self):
+        return f"Mentor Profile: {self.user.name}"
