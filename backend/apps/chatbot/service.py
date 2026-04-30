@@ -4,7 +4,7 @@ Chatbot service layer for managing conversations and AI interactions.
 
 import logging
 from typing import List, Dict, Optional, Tuple
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.utils import timezone
 
 from .models import ChatSession, ChatMessage
@@ -41,9 +41,10 @@ DO NOT:
 class ChatbotService:
     """Service for managing chatbot conversations."""
     
-    def __init__(self, user: User, provider_name: Optional[str] = None):
+    def __init__(self, user):
+        """Initialize chatbot service with user."""
         self.user = user
-        self.provider = ProviderFactory.create_provider(provider_name)
+        self.provider = ProviderFactory.create_provider()
         self.max_history_messages = 10  # Limit context to last 10 messages
     
     def create_session(self, title: str = "Career Guidance Chat") -> ChatSession:

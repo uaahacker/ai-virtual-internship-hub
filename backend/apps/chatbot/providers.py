@@ -27,17 +27,21 @@ class OpenRouterProvider(LLMProvider):
     def __init__(self):
         self.api_key = os.getenv('OPENROUTER_API_KEY')
         self.api_base = 'https://openrouter.ai/api/v1'
-        self.model = os.getenv('OPENROUTER_MODEL', 'mistralai/mistral-7b-instruct')
+        self.model = os.getenv('OPENROUTER_MODEL', 'openai/gpt-oss-120b:free')
         
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY not set in environment variables")
     
     def generate_response(self, messages: List[Dict[str, str]], **kwargs) -> str:
-        """Generate response using OpenRouter API."""
+        """Generate response using OpenRouter API (matching JavaScript SDK approach)."""
         try:
+            # Headers match the JavaScript SDK requirements
             headers = {
                 'Authorization': f'Bearer {self.api_key}',
                 'Content-Type': 'application/json',
+                'HTTP-Referer': 'http://localhost:5173',  # Your frontend URL
+                'X-Title': 'Virtual Internship Hub',  # App name
+                'User-Agent': 'Virtual-Internship-Hub/1.0',
             }
             
             payload = {
@@ -45,23 +49,59 @@ class OpenRouterProvider(LLMProvider):
                 'messages': messages,
                 'temperature': kwargs.get('temperature', 0.7),
                 'max_tokens': kwargs.get('max_tokens', 500),
-                'top_p': kwargs.get('top_p', 0.9),
+                'top_p': kwargs.get('top_p', 1.0),
             }
+            
+            logger.info(f"OpenRouter request - Model: {self.model}")
             
             response = requests.post(
                 f'{self.api_base}/chat/completions',
                 headers=headers,
                 json=payload,
-                timeout=30
+                timeout=60  # Increased timeout for free models
             )
-            response.raise_for_status()
+            
+            # Detailed error logging
+            if response.status_code != 200:
+                logger.error(f"OpenRouter HTTP {response.status_code}: {response.text}")
+                response.raise_for_status()
             
             result = response.json()
-            return result['choices'][0]['message']['content']
+            logger.debug(f"OpenRouter full response: {result}")
             
+            # Extract response content with validation
+            if 'choices' not in result or not result['choices']:
+                logger.error(f"No choices in OpenRouter response: {result}")
+                raise Exception(f"Invalid OpenRouter response: no choices returned")
+            
+            content = result['choices'][0]['message'].get('content')
+            
+            # Validate content is not None or empty
+            if content is None:
+                logger.error(f"OpenRouter returned null content. Full choice: {result['choices'][0]}")
+                raise Exception(f"OpenRouter returned empty response. Model may be overloaded. Try again.")
+            
+            if not content.strip():
+                logger.error(f"OpenRouter returned empty string content")
+                raise Exception(f"OpenRouter returned empty response. Try a different message.")
+            
+            # Log usage info (like the JS SDK does)
+            if 'usage' in result:
+                logger.info(f"OpenRouter usage - Input: {result['usage'].get('prompt_tokens', 0)}, "
+                          f"Output: {result['usage'].get('completion_tokens', 0)}")
+            
+            logger.info(f"✓ Successfully generated response ({len(content)} chars)")
+            return content
+            
+        except requests.exceptions.Timeout:
+            logger.error(f"OpenRouter request timeout for model: {self.model}")
+            raise Exception(f"API request timed out. Model {self.model} may be busy. Try again.")
         except requests.exceptions.RequestException as e:
             logger.error(f"OpenRouter API error: {str(e)}")
             raise Exception(f"Failed to generate response: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error in OpenRouter: {str(e)}")
+            raise
 
 
 class OpenAIProvider(LLMProvider):

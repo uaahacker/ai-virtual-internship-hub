@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useChat } from '../contexts/ChatContext';
+import ChatMessage from './ChatMessage';
 
 const ChatWidget = ({ isOpen, onClose, isMinimized, onMinimize }) => {
   const {
@@ -90,26 +91,7 @@ const ChatWidget = ({ isOpen, onClose, isMinimized, onMinimize }) => {
               </div>
             ) : (
               messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-xs px-4 py-2 rounded-lg ${
-                      msg.role === 'user'
-                        ? 'bg-blue-600 text-white rounded-br-none'
-                        : 'bg-gray-200 text-gray-900 rounded-bl-none'
-                    }`}
-                  >
-                    <p className="text-sm break-words">{msg.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
-                      {new Date(msg.created_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                </div>
+                <ChatMessage key={idx} message={msg} />
               ))
             )}
             {loading && (

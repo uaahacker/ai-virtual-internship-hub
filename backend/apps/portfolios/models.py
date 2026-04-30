@@ -93,14 +93,20 @@ class PortfolioItem(models.Model):
     # Task Information (denormalized for performance)
     task_title = models.CharField(
         max_length=255,
+        blank=True,
+        default='',
         help_text='Task title',
     )
     task_domain = models.CharField(
         max_length=50,
+        blank=True,
+        default='',
         help_text='Task domain',
     )
     task_difficulty = models.CharField(
         max_length=15,
+        blank=True,
+        default='',
         help_text='Task difficulty level',
     )
     task_type = models.CharField(
@@ -111,9 +117,15 @@ class PortfolioItem(models.Model):
 
     # Completion Information
     completion_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=timezone.now,
         help_text='When task was completed',
     )
     evaluation_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=timezone.now,
         help_text='When evaluation was completed',
     )
 

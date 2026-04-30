@@ -38,10 +38,10 @@ export default function RecommendedTasksPage() {
     try {
       setLoading(true);
       const response = await taskService.getRecommendations();
-      if (response.success) {
-        setTasks(response.data);
+      if (response.data.success) {
+        setTasks(response.data.data || []);
       } else {
-        setError(response.error?.message || 'Failed to load recommendations');
+        setError(response.data.error?.message || 'Failed to load recommendations');
       }
     } catch (err) {
       setError('Error loading recommendations');

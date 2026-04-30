@@ -26,10 +26,13 @@ class StudentAnalyticsView(APIView):
                 'data': analytics
             })
         except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"Error in StudentAnalyticsView: {str(e)}\n{error_trace}")
             return Response({
                 'success': False,
                 'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class MentorAnalyticsView(APIView):

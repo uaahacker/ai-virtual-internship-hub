@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useChat } from '../contexts/ChatContext';
 import DashboardLayout from '../components/DashboardLayout';
+import ChatMessage from '../components/ChatMessage';
 import { Card, CardHeader, CardBody } from '../components/CardComponents';
 import { EmptyState, Alert } from '../components/ProgressAndUtilityComponents';
 
@@ -25,10 +26,31 @@ const ChatPage = () => {
   const [feedbackComment, setFeedbackComment] = useState('');
   const messagesEndRef = useRef(null);
 
+  // Initialize: fetch sessions on mount
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    const initChat = async () => {
+      console.log('🔄 Initializing chat...');
+      await fetchSessions();
+    };
+    initChat();
+  }, []);
 
+  // Auto-create session if none exist
+  useEffect(() => {
+    const autoCreateSession = async () => {
+      if (sessions.length === 0 && !loading && !currentSession) {
+        console.log('📝 Creating first chat session...');
+        await createSession();
+      } else if (sessions.length > 0 && !currentSession) {
+        // Load first session if sessions exist but none is selected
+        console.log('📂 Loading first session:', sessions[0].id);
+        await loadSession(sessions[0].id);
+      }
+    };
+    autoCreateSession();
+  }, [sessions, currentSession, loading]);
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -137,7 +159,16 @@ const ChatPage = () => {
 
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
-          {currentSession ? (
+          {loading && !currentSession ? (
+            <Card className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+                  <div className="w-12 h-12 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <p className="text-slate-600 text-lg">Initializing chat...</p>
+              </div>
+            </Card>
+          ) : currentSession ? (
             <Card className="flex flex-col h-full">
               {/* Header */}
               <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-blue-50">
@@ -188,48 +219,11 @@ const ChatPage = () => {
                   </div>
                 ) : (
                   messages.map((msg, idx) => (
-                    <div
+                    <ChatMessage
                       key={idx}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className="max-w-2xl">
-                        <div
-                          className={`px-4 py-3 rounded-lg ${
-                            msg.role === 'user'
-                              ? 'bg-blue-600 text-white rounded-br-none'
-                              : 'bg-slate-100 text-slate-900 rounded-bl-none border border-slate-200'
-                          }`}
-                        >
-                          <p className="break-words text-sm">{msg.content}</p>
-                        </div>
-                        <div className="flex items-center justify-between mt-2 px-1">
-                          <p className="text-xs text-slate-500">
-                            {new Date(msg.created_at).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                          {msg.role === 'assistant' && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setSelectedFeedback(msg.id)}
-                                className="text-xs text-slate-500 hover:text-green-600 transition"
-                                title="Helpful"
-                              >
-                                👍
-                              </button>
-                              <button
-                                onClick={() => setSelectedFeedback(msg.id)}
-                                className="text-xs text-slate-500 hover:text-red-600 transition"
-                                title="Not helpful"
-                              >
-                                👎
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      message={msg}
+                      onFeedbackClick={() => setSelectedFeedback(msg.id)}
+                    />
                   ))
                 )}
                 {loading && (

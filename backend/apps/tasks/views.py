@@ -78,19 +78,39 @@ class RecommendedTasksView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
     def get(self, request):
-        student = request.user
-        recommendations = TaskRecommendationService.get_recommendations_for_student(student, limit=10)
-        result = []
-        for rec in recommendations:
-            task = rec['task']
-            assignment, created = TaskAssignment.objects.get_or_create(
-                student=student,
-                task=task,
-                defaults={'status': 'recommended', 'recommended_score': rec['score'], 'recommendation_reason': rec['reason']}
+        try:
+            student = request.user
+            recommendations = TaskRecommendationService.get_recommendations_for_student(student, limit=10)
+            result = []
+            for rec in recommendations:
+                task = rec['task']
+                assignment, created = TaskAssignment.objects.get_or_create(
+                    student=student,
+                    task=task,
+                    defaults={'status': 'recommended', 'recommended_score': rec['score'], 'recommendation_reason': rec['reason']}
+                )
+                serializer = RecommendedTaskSerializer(assignment)
+                result.append(serializer.data)
+            
+            # If no new recommendations, show already-recommended tasks
+            if not result:
+                existing_recommended = TaskAssignment.objects.filter(
+                    student=student, 
+                    status='recommended'
+                ).select_related('task')
+                for assignment in existing_recommended:
+                    serializer = RecommendedTaskSerializer(assignment)
+                    result.append(serializer.data)
+            
+            return Response({'success': True, 'data': result})
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"Error in RecommendedTasksView: {str(e)}\n{error_trace}")
+            return Response(
+                {'success': False, 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-            serializer = RecommendedTaskSerializer(assignment)
-            result.append(serializer.data)
-        return Response({'success': True, 'data': result})
 
 
 class MyTasksView(APIView):

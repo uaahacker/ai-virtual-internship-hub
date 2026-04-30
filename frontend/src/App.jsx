@@ -1,6 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 
+// Landing page
+import LandingPage from './pages/LandingPage';
+
 // Auth pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -66,6 +69,7 @@ function App() {
     return (
       <Routes>
       {/* Public routes */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} />} />
       <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to={getDashboardPath(user.role)} />} />
 
@@ -97,8 +101,7 @@ function App() {
       <Route path="/admin/analytics" element={<ProtectedRoute role="Admin"><AdminAnalyticsDashboard /></ProtectedRoute>} />
 
       {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/login" />} />
-      <Route path="*" element={<Navigate to="/login" />} />
+      <Route path="*" element={<Navigate to="/" />} />
     </Routes>
     );
   } catch (err) {

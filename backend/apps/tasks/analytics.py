@@ -14,7 +14,7 @@ class StudentAnalyticsService:
         """Get comprehensive analytics for a student"""
         
         # Total assessments attempted
-        assessments_attempted = student.assessmentattempt_set.count()
+        assessments_attempted = student.assessment_attempts.count()
         
         # Get all completed tasks with evaluations  
         completed_tasks = TaskAssignment.objects.filter(

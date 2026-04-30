@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import api from '../services/api';
 
 // Chat context for managing chatbot state
 const ChatContext = createContext();
@@ -14,20 +15,11 @@ export const ChatProvider = ({ children }) => {
   const fetchSessions = useCallback(async () => {
     try {
       setError(null);
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/chatbot/sessions/', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) throw new Error('Failed to fetch sessions');
-      
-      const data = await response.json();
-      setSessions(data.data || []);
+      const response = await api.get('/chatbot/sessions/');
+      setSessions(response.data.data || []);
     } catch (err) {
-      setError(err.message);
+      const errorMsg = err.message || 'Failed to fetch sessions';
+      setError(errorMsg);
       console.error('Error fetching sessions:', err);
     }
   }, []);
@@ -37,26 +29,14 @@ export const ChatProvider = ({ children }) => {
     try {
       setError(null);
       setLoading(true);
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/chatbot/sessions/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ title }),
-      });
-      
-      if (!response.ok) throw new Error('Failed to create session');
-      
-      const data = await response.json();
-      const newSession = data.data;
+      const response = await api.post('/chatbot/sessions/', { title });
+      const newSession = response.data.data;
       setSessions(prev => [newSession, ...prev]);
       setCurrentSession(newSession);
       setMessages([]);
       return newSession;
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to create session');
       console.error('Error creating session:', err);
     } finally {
       setLoading(false);
@@ -68,22 +48,12 @@ export const ChatProvider = ({ children }) => {
     try {
       setError(null);
       setLoading(true);
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`/api/chatbot/sessions/${sessionId}/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) throw new Error('Failed to load session');
-      
-      const data = await response.json();
-      const session = data.data;
+      const response = await api.get(`/chatbot/sessions/${sessionId}/`);
+      const session = response.data.data;
       setCurrentSession(session);
       setMessages(session.messages || []);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to load session');
       console.error('Error loading session:', err);
     } finally {
       setLoading(false);
@@ -109,27 +79,16 @@ export const ChatProvider = ({ children }) => {
       };
       setMessages(prev => [...prev, userMessage]);
 
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`/api/chatbot/sessions/${currentSession.id}/messages/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content }),
-      });
+      const response = await api.post(`/chatbot/sessions/${currentSession.id}/messages/`, { content });
       
-      if (!response.ok) throw new Error('Failed to send message');
-      
-      const data = await response.json();
       // Replace messages with server response (includes both user and assistant)
       setMessages(prev => {
         // Remove the optimistically added user message and add server messages
         const filtered = prev.filter(m => m.content !== content || m.role !== 'user');
-        return [...filtered, ...data.data];
+        return [...filtered, ...response.data.data];
       });
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to send message');
       // Remove optimistically added message on error
       setMessages(prev => prev.filter(m => m.content !== content || m.role !== 'user'));
       console.error('Error sending message:', err);
@@ -142,24 +101,14 @@ export const ChatProvider = ({ children }) => {
   const deleteSession = useCallback(async (sessionId) => {
     try {
       setError(null);
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`/api/chatbot/sessions/${sessionId}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) throw new Error('Failed to delete session');
-      
+      await api.delete(`/chatbot/sessions/${sessionId}/`);
       setSessions(prev => prev.filter(s => s.id !== sessionId));
       if (currentSession?.id === sessionId) {
         setCurrentSession(null);
         setMessages([]);
       }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to delete session');
       console.error('Error deleting session:', err);
     }
   }, [currentSession]);
@@ -167,17 +116,7 @@ export const ChatProvider = ({ children }) => {
   // Submit feedback
   const submitFeedback = useCallback(async (messageId, rating, comment = '') => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/chatbot/feedback/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message_id: messageId, rating, comment }),
-      });
-      
-      if (!response.ok) throw new Error('Failed to submit feedback');
+      await api.post('/chatbot/feedback/', { message_id: messageId, rating, comment });
       return true;
     } catch (err) {
       console.error('Error submitting feedback:', err);
@@ -204,7 +143,7 @@ export const ChatProvider = ({ children }) => {
       {children}
     </ChatContext.Provider>
   );
-};
+}
 
 export const useChat = () => {
   const context = useContext(ChatContext);

@@ -84,7 +84,7 @@ class TaskRecommendationService:
         weakest = min(domain_averages.items(), key=lambda x: x[1]['avg_score']) if domain_averages else (None, {})
 
         # Overall average
-        all_scores = [a['percentage'] for a in attempts]
+        all_scores = [a.percentage for a in attempts]
         avg_score = sum(all_scores) / len(all_scores) if all_scores else 0
 
         # Determine overall skill level

@@ -26,8 +26,7 @@ class AssessmentListView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
     def get(self, request):
-        # NOTE: Djongo cannot filter on BooleanField directly, so filter in Python
-        assessments = [a for a in Assessment.objects.all() if a.is_active]
+        assessments = Assessment.objects.filter(is_active=True)
         serializer = AssessmentListSerializer(assessments, many=True)
         return Response({'success': True, 'data': serializer.data})
 
