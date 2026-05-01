@@ -43,6 +43,10 @@ import MentorStudentDetailPage from './pages/MentorStudentDetailPage';
 import MentorPendingReviewsPage from './pages/MentorPendingReviewsPage';
 import MentorReviewTaskPage from './pages/MentorReviewTaskPage';
 
+// Settings pages
+import StudentSettingsPage from './pages/StudentSettingsPage';
+import MentorSettingsPage from './pages/MentorSettingsPage';
+
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -87,6 +91,7 @@ function App() {
       <Route path="/student/portfolio" element={<ProtectedRoute role="Student"><PortfolioPage /></ProtectedRoute>} />
       <Route path="/student/chat" element={<ProtectedRoute role="Student"><ChatPage /></ProtectedRoute>} />
       <Route path="/student/portfolio/items/:itemId" element={<ProtectedRoute role="Student"><PortfolioItemDetailPage /></ProtectedRoute>} />
+      <Route path="/student/settings" element={<ProtectedRoute role="Student"><StudentSettingsPage /></ProtectedRoute>} />
 
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={<ProtectedRoute role="Mentor"><MentorDashboard /></ProtectedRoute>} />
@@ -95,6 +100,7 @@ function App() {
       <Route path="/mentor/students/:studentId" element={<ProtectedRoute role="Mentor"><MentorStudentDetailPage /></ProtectedRoute>} />
       <Route path="/mentor/reviews" element={<ProtectedRoute role="Mentor"><MentorPendingReviewsPage /></ProtectedRoute>} />
       <Route path="/mentor/reviews/:assignmentId" element={<ProtectedRoute role="Mentor"><MentorReviewTaskPage /></ProtectedRoute>} />
+      <Route path="/mentor/settings" element={<ProtectedRoute role="Mentor"><MentorSettingsPage /></ProtectedRoute>} />
 
       {/* Admin routes */}
       <Route path="/admin/dashboard" element={<ProtectedRoute role="Admin"><AdminDashboard /></ProtectedRoute>} />

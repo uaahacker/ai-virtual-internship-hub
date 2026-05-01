@@ -1,16 +1,27 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
+import { FiSettings, FiLogOut } from 'react-icons/fi';
 
 export default function DashboardLayout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleSettingsClick = () => {
+    if (user?.role === 'Student') {
+      navigate('/student/settings');
+    } else if (user?.role === 'Mentor') {
+      navigate('/mentor/settings');
+    }
+    setSettingsMenuOpen(false);
   };
 
   const navItems = getNavItems(user?.role);
@@ -109,9 +120,35 @@ export default function DashboardLayout({ children }) {
               <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-700">
                 🔔
               </button>
-              <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-700">
-                ⚙️
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setSettingsMenuOpen(!settingsMenuOpen)}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-700"
+                >
+                  <FiSettings size={20} />
+                </button>
+                
+                {/* Settings Dropdown */}
+                {settingsMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <button
+                      onClick={handleSettingsClick}
+                      className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center gap-2 transition-colors"
+                    >
+                      <FiSettings size={16} />
+                      Account Settings
+                    </button>
+                    <div className="border-t border-gray-200 my-2"></div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                    >
+                      <FiLogOut size={16} />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>

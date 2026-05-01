@@ -148,3 +148,28 @@ class AssignedStudentListSerializer(serializers.Serializer):
     progress_score = serializers.FloatField()
     completed_tasks_count = serializers.IntegerField()
     pending_review_count = serializers.IntegerField()
+
+
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    """Serializer for updating user profile (name and picture)."""
+    
+    class Meta:
+        model = User
+        fields = ['name', 'profile_picture']
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Serializer for changing user password."""
+    
+    old_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, required=True, min_length=8)
+    new_password_confirm = serializers.CharField(write_only=True, required=True, min_length=8)
+    
+    def validate_new_password(self, value):
+        validate_password(value)
+        return value
+    
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})
+        return attrs

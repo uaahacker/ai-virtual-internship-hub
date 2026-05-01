@@ -13,6 +13,7 @@ from django.db import models
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
     StudentProfileSerializer, MentorProfileSerializer,
+    UpdateProfileSerializer, ChangePasswordSerializer,
 )
 from .models import StudentProfile, MentorProfile
 from apps.core.permissions import IsAdmin, IsStudent, IsMentor
@@ -507,6 +508,60 @@ class AutoAssignMentorView(APIView):
             'success': True,
             'message': f'{assigned_count} students assigned to mentors.',
             'data': {'assigned_count': assigned_count}
+        })
+
+
+class UpdateProfileView(APIView):
+    """
+    PUT /api/auth/profile/update/
+    Update current user's profile (name and profile picture).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        """Update user's name and profile picture."""
+        serializer = UpdateProfileSerializer(
+            request.user,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Profile updated successfully.',
+            'data': UserSerializer(request.user).data,
+        })
+
+
+class ChangePasswordView(APIView):
+    """
+    POST /api/auth/change-password/
+    Change the current user's password.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Change user password."""
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Verify old password
+        user = request.user
+        if not user.check_password(serializer.validated_data['old_password']):
+            return Response(
+                {'success': False, 'error': 'Old password is incorrect.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Set new password
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Password changed successfully.',
         })
 
 
