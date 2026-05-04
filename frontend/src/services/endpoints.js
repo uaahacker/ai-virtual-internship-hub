@@ -118,3 +118,22 @@ export const analyticsService = {
   // Admin analytics
   getAdminAnalytics: () => api.get('/tasks/analytics/admin/'),
 };
+
+export const notificationService = {
+  list: () => api.get('/notifications/'),
+  unreadCount: () => api.get('/notifications/unread-count/'),
+  markRead: (id) => api.post(`/notifications/${id}/read/`),
+  markAllRead: () => api.post('/notifications/read-all/'),
+};
+
+export const announcementService = {
+  list: () => api.get('/notifications/announcements/'),
+  create: (data) => api.post('/notifications/announcements/', data),
+  delete: (id) => api.delete(`/notifications/announcements/${id}/`),
+};
+
+export const directMessageService = {
+  getConversation: (withUserId) => api.get('/notifications/messages/', { params: { with: withUserId } }),
+  send: (receiverId, content) => api.post('/notifications/messages/send/', { receiver_id: receiverId, content }),
+  unreadCount: () => api.get('/notifications/messages/unread-count/'),
+};

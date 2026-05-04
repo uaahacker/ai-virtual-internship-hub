@@ -1,14 +1,29 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useState } from 'react';
-import { FiSettings, FiLogOut } from 'react-icons/fi';
+import { useNotification } from '../contexts/NotificationContext';
+import { useState, useRef, useEffect } from 'react';
+import { FiSettings, FiLogOut, FiBell } from 'react-icons/fi';
 
 export default function DashboardLayout({ children }) {
   const { user, logout } = useAuth();
+  const { notifications, unreadCount, markRead, markAllRead } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
+
+  // Close notification panel on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -110,16 +125,65 @@ export default function DashboardLayout({ children }) {
               </button>
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
-                  {user?.role === 'Student' && '📚 Student Dashboard'}
-                  {user?.role === 'Mentor' && '👨‍🏫 Mentor Dashboard'}
-                  {user?.role === 'Admin' && '⚙️ Admin Dashboard'}
+                  {getCurrentPageTitle(location.pathname, user?.role)}
                 </h2>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-700">
-                🔔
-              </button>
+              {/* Notification Bell */}
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setNotifOpen((o) => !o)}
+                  className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-700"
+                  aria-label="Notifications"
+                >
+                  <FiBell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center leading-none">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown */}
+                {notifOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                      <h3 className="font-semibold text-gray-700 text-sm">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={() => markAllRead()}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                      {notifications.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-6">No notifications</p>
+                      ) : (
+                        notifications.slice(0, 20).map((n) => (
+                          <div
+                            key={n.id}
+                            onClick={() => {
+                              if (n.status === 'Unread') markRead(n.id);
+                              if (n.link) { navigate(n.link); setNotifOpen(false); }
+                            }}
+                            className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${n.status === 'Unread' ? 'bg-indigo-50' : ''}`}
+                          >
+                            <p className="text-sm font-medium text-gray-800 truncate">{n.title}</p>
+                            <p className="text-xs text-gray-500 mt-0.5 truncate">{n.message}</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="relative">
                 <button 
                   onClick={() => setSettingsMenuOpen(!settingsMenuOpen)}
@@ -174,7 +238,9 @@ function getNavItems(role) {
         { path: '/student/tasks/my-tasks', label: 'My Tasks', icon: '✅' },
         { path: '/student/portfolio', label: 'Portfolio', icon: '🎨' },
         { path: '/student/analytics', label: 'Analytics', icon: '📈' },
-        { path: '/student/chat', label: 'AI Chat', icon: '💬' },
+        { path: '/student/chat', label: 'AI Chat', icon: '🤖' },
+        { path: '/student/announcements', label: 'Announcements', icon: '📢' },
+        { path: '/student/mentor-chat', label: 'Mentor Chat', icon: '💬' },
       ];
     case 'Mentor':
       return [
@@ -184,14 +250,34 @@ function getNavItems(role) {
         { path: '/mentor/tasks', label: 'My Tasks', icon: '📝' },
         { path: '/mentor/reviews', label: 'Reviews', icon: '📋' },
         { path: '/mentor/analytics', label: 'Analytics', icon: '📈' },
-        { path: '/mentor/chat', label: 'AI Assistant', icon: '💬' },
+        { path: '/mentor/chat', label: 'AI Assistant', icon: '🤖' },
+        { path: '/mentor/announcements', label: 'Announcements', icon: '📢' },
       ];
     case 'Admin':
       return [
         { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-        { path: '/admin/analytics', label: 'Analytics', icon: '📊' },
+        { path: '/admin/analytics', label: 'Analytics', icon: '📈' },
+        { path: '/admin/announcements', label: 'Announcements', icon: '📢' },
       ];
     default:
       return [];
   }
+}
+
+function getCurrentPageTitle(pathname, role) {
+  const allItems = [
+    ...getNavItems('Student'),
+    ...getNavItems('Mentor'),
+    ...getNavItems('Admin'),
+  ];
+  // Dynamic route match
+  if (pathname.match(/\/mentor\/students\/\d+\/chat/)) return '💬 Direct Chat';
+  const match = allItems.find(
+    (item) => pathname === item.path || pathname.startsWith(item.path + '/')
+  );
+  if (match) return `${match.icon} ${match.label}`;
+  if (role === 'Student') return '📚 Student Dashboard';
+  if (role === 'Mentor') return '👨‍🏫 Mentor Dashboard';
+  if (role === 'Admin') return '⚙️ Admin Dashboard';
+  return 'Dashboard';
 }

@@ -13,29 +13,30 @@ from .providers import ProviderFactory
 logger = logging.getLogger(__name__)
 
 # System prompt that defines the chatbot's behavior and scope
-SYSTEM_PROMPT = """You are an AI career guidance chatbot specializing in helping students with their professional development. 
+SYSTEM_PROMPT = """You are an AI career guidance chatbot for an internship hub platform.
+You specialise in helping students grow in the following 10 freelancing and professional domains:
+  Graphic Design, Content Writing, Programming, Freelancing, E-Commerce,
+  QuickBooks, AutoCAD, Data Analytics, Digital Marketing, WordPress.
 
-Your scope is LIMITED to the following areas:
-1. Freelancing career guidance - tips on starting freelancing, finding clients, pricing services
-2. Recommended domains - suggesting career paths based on interests (Web Dev, Data Science, AI/ML, etc.)
-3. Skill improvement tips - recommending which skills to develop and learning resources
-4. Task roadmap suggestions - creating learning plans and project roadmaps
-5. Portfolio improvement advice - helping improve portfolio projects and presentations
+Your scope is LIMITED to:
+1. Career guidance within the 10 domains above
+2. Skill improvement tips specific to those domains
+3. Task and project roadmap suggestions
+4. Portfolio improvement advice for those domains
+5. Freelancing strategies — finding clients, pricing, platforms
 
 IMPORTANT CONSTRAINTS:
-- Keep responses focused and concise (under 200 words typically)
-- Provide actionable, specific advice
+- Responses should be focused and actionable (under 250 words typically)
+- Always tailor advice to the student's specific domains and skill level when their profile is provided
 - When asked about topics outside your scope, politely redirect to your areas of expertise
 - Be encouraging and supportive
-- Ask clarifying questions to better understand the student's goals
 - Suggest concrete next steps and resources
 
 DO NOT:
 - Provide general life advice unrelated to career
 - Write code or provide technical implementation details
 - Make guarantees about job outcomes
-- Recommend specific companies without context
-- Engage in topics unrelated to career guidance"""
+- Engage in topics unrelated to career guidance in the 10 domains listed"""
 
 
 class ChatbotService:
@@ -69,15 +70,44 @@ class ChatbotService:
     def _get_conversation_context(self, session: ChatSession) -> List[Dict[str, str]]:
         """Get recent conversation history for context."""
         messages = ChatMessage.objects.filter(session=session).order_by('created_at')
-        
+
+        # Personalise the system prompt with the student's domain profile
+        personalized_prompt = SYSTEM_PROMPT
+        try:
+            profile = self.user.student_profile
+            preferred = profile.preferred_domains or []
+            strongest = profile.strongest_domain or None
+            weakest   = profile.weakest_domain or None
+            skill_scores = profile.skill_scores_by_domain or {}
+            completed = getattr(profile, 'completed_tasks_count', 0)
+            progress  = getattr(profile, 'progress_score', 0)
+
+            lines = ["\n\nStudent Profile Context (use this to personalise every response):"]
+            lines.append(f"- Preferred/Attempted Domains: {', '.join(preferred) if preferred else 'Not selected yet'}")
+            if strongest:
+                score = skill_scores.get(strongest, '')
+                lines.append(f"- Strongest Domain: {strongest}" + (f" (score: {round(score)}%)" if score else ''))
+            if weakest and weakest != strongest:
+                score = skill_scores.get(weakest, '')
+                lines.append(f"- Needs Improvement: {weakest}" + (f" (score: {round(score)}%)" if score else ''))
+            if skill_scores:
+                score_list = ', '.join(f"{d}: {round(s)}%" for d, s in sorted(skill_scores.items(), key=lambda x: -x[1]))
+                lines.append(f"- Domain Scores: {score_list}")
+            lines.append(f"- Tasks Completed: {completed}")
+            lines.append(f"- Progress Score: {progress}")
+            lines.append("Tailor ALL advice to these domains and skill levels. Reference specific domain names in your responses.")
+            personalized_prompt += '\n'.join(lines)
+        except Exception:
+            pass  # No student profile — use generic prompt (mentor or admin user)
+
         # Build message context
-        context = [{'role': 'system', 'content': SYSTEM_PROMPT}]
-        
+        context = [{'role': 'system', 'content': personalized_prompt}]
+
         # Include recent messages (last N messages for token efficiency)
         recent_messages = messages[max(0, messages.count() - self.max_history_messages):]
         for msg in recent_messages:
             context.append({'role': msg.role, 'content': msg.content})
-        
+
         return context
     
     def send_message(self, session: ChatSession, user_message: str) -> Tuple[str, ChatMessage]:
@@ -111,7 +141,7 @@ class ChatbotService:
             assistant_response = self.provider.generate_response(
                 context,
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=700
             )
             
             # Save assistant response

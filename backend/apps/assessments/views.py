@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from apps.core.permissions import IsStudent
+from apps.accounts.models import StudentProfile
 from .models import Assessment, Question, AssessmentAttempt
 from .serializers import (
     AssessmentListSerializer,
@@ -19,6 +20,57 @@ from .recommendation import generate_recommendation, calculate_performance_break
 from .nlp_feedback import generate_feedback
 from .evaluation_engine import evaluate as run_evaluation
 from apps.tasks.ml_engine import StudentClusterer
+
+
+def _update_student_domain_profile(user):
+    """
+    Recompute and persist domain summary fields on StudentProfile from ALL
+    assessment attempts.  Called after every submission so that:
+      - StudentProfile.strongest_domain / weakest_domain stay current
+      - StudentProfile.skill_scores_by_domain reflects best score per domain
+      - StudentProfile.assessment_summary holds full score history per domain
+      - StudentProfile.preferred_domains includes every attempted domain
+    """
+    all_attempts = (
+        AssessmentAttempt.objects
+        .filter(student=user)
+        .select_related('assessment')
+    )
+
+    domain_best: dict = {}          # domain → best domain_score (0-100)
+    assessment_summary: dict = {}   # domain → [scores list]
+
+    for a in all_attempts:
+        d = a.assessment.domain
+        score = float(a.domain_score)
+        # Keep highest score per domain
+        if d not in domain_best or score > domain_best[d]:
+            domain_best[d] = score
+        if d not in assessment_summary:
+            assessment_summary[d] = []
+        assessment_summary[d].append(score)
+
+    if not domain_best:
+        return
+
+    profile, _ = StudentProfile.objects.get_or_create(user=user)
+
+    strongest = max(domain_best, key=domain_best.get)
+    weakest   = min(domain_best, key=domain_best.get)
+
+    # Merge attempted domains into preferred_domains (keep existing + add new)
+    existing_preferred = list(profile.preferred_domains or [])
+    merged_preferred = list(dict.fromkeys(existing_preferred + list(domain_best.keys())))
+
+    profile.strongest_domain     = strongest
+    profile.weakest_domain       = weakest
+    profile.skill_scores_by_domain = domain_best
+    profile.assessment_summary   = assessment_summary
+    profile.preferred_domains    = merged_preferred
+    profile.save(update_fields=[
+        'strongest_domain', 'weakest_domain',
+        'skill_scores_by_domain', 'assessment_summary', 'preferred_domains',
+    ])
 
 
 class AssessmentListView(APIView):
@@ -161,6 +213,13 @@ class SubmitAssessmentView(APIView):
         # 5.1) Update student cluster (async-safe — must not block submission)
         try:
             StudentClusterer.update_student_cluster(request.user)
+        except Exception:
+            pass
+
+        # 5.2) Sync StudentProfile domain summary fields so mentor filtering,
+        #      auto-assign, and the AI chatbot all see up-to-date domain data.
+        try:
+            _update_student_domain_profile(request.user)
         except Exception:
             pass
 

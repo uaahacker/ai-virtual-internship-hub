@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import './index.css';
 
 console.log('🚀 main.jsx - Starting React app...');
@@ -23,8 +24,10 @@ try {
       <BrowserRouter>
         <AuthProvider>
           <ChatProvider>
-            <App />
-            <ToastContainer position="top-right" autoClose={3000} />
+            <NotificationProvider>
+              <App />
+              <ToastContainer position="top-right" autoClose={3000} />
+            </NotificationProvider>
           </ChatProvider>
         </AuthProvider>
       </BrowserRouter>

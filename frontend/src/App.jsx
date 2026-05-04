@@ -47,6 +47,10 @@ import MentorChatPage from './pages/MentorChatPage';
 import MentorTasksPage from './pages/MentorTasksPage';
 import MentorCreateTaskPage from './pages/MentorCreateTaskPage';
 
+// New feature pages
+import AnnouncementsPage from './pages/AnnouncementsPage';
+import DirectChatPage from './pages/DirectChatPage';
+
 // Settings pages
 import StudentSettingsPage from './pages/StudentSettingsPage';
 import MentorSettingsPage from './pages/MentorSettingsPage';
@@ -96,6 +100,8 @@ function App() {
       <Route path="/student/chat" element={<ProtectedRoute role="Student"><ChatPage /></ProtectedRoute>} />
       <Route path="/student/portfolio/items/:itemId" element={<ProtectedRoute role="Student"><PortfolioItemDetailPage /></ProtectedRoute>} />
       <Route path="/student/settings" element={<ProtectedRoute role="Student"><StudentSettingsPage /></ProtectedRoute>} />
+      <Route path="/student/announcements" element={<ProtectedRoute role="Student"><AnnouncementsPage /></ProtectedRoute>} />
+      <Route path="/student/mentor-chat" element={<ProtectedRoute role="Student"><DirectChatPage /></ProtectedRoute>} />
 
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={<ProtectedRoute role="Mentor"><MentorDashboard /></ProtectedRoute>} />
@@ -110,10 +116,13 @@ function App() {
       <Route path="/mentor/tasks/create" element={<ProtectedRoute role="Mentor"><MentorCreateTaskPage /></ProtectedRoute>} />
       <Route path="/mentor/tasks/:taskId/edit" element={<ProtectedRoute role="Mentor"><MentorCreateTaskPage /></ProtectedRoute>} />
       <Route path="/mentor/settings" element={<ProtectedRoute role="Mentor"><MentorSettingsPage /></ProtectedRoute>} />
+      <Route path="/mentor/announcements" element={<ProtectedRoute role="Mentor"><AnnouncementsPage /></ProtectedRoute>} />
+      <Route path="/mentor/students/:studentId/chat" element={<ProtectedRoute role="Mentor"><DirectChatPage /></ProtectedRoute>} />
 
       {/* Admin routes */}
       <Route path="/admin/dashboard" element={<ProtectedRoute role="Admin"><AdminDashboard /></ProtectedRoute>} />
       <Route path="/admin/analytics" element={<ProtectedRoute role="Admin"><AdminAnalyticsDashboard /></ProtectedRoute>} />
+      <Route path="/admin/announcements" element={<ProtectedRoute role="Admin"><AnnouncementsPage /></ProtectedRoute>} />
 
       {/* Default redirect */}
       <Route path="*" element={<Navigate to="/" />} />

@@ -32,6 +32,25 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        # Immediately create profile with domain data provided at signup
+        if user.role == 'Student':
+            preferred = request.data.get('preferred_domains', [])
+            if not isinstance(preferred, list):
+                preferred = []
+            StudentProfile.objects.get_or_create(
+                user=user,
+                defaults={'preferred_domains': preferred},
+            )
+        elif user.role == 'Mentor':
+            expertise = request.data.get('expertise_domains', [])
+            if not isinstance(expertise, list):
+                expertise = []
+            MentorProfile.objects.get_or_create(
+                user=user,
+                defaults={'expertise_domains': expertise},
+            )
+
         tokens = _get_tokens(user)
         return Response(
             {
@@ -506,15 +525,8 @@ class MentorAvailableStudentsView(APIView):
                 models.Q(strongest_domain__iexact=domain_filter) |
                 models.Q(preferred_domains__icontains=domain_filter)
             )
-
-        # Also include students in mentor's expertise domains if no filter given
-        if not domain_filter and mentor_profile.expertise_domains:
-            # Build Q for any expertise domain
-            q = models.Q()
-            for d in mentor_profile.expertise_domains:
-                q |= models.Q(strongest_domain__iexact=d)
-                q |= models.Q(preferred_domains__icontains=d)
-            qs = qs.filter(q)
+        # No domain_filter → return ALL unassigned students so new students
+        # (who haven't completed assessments yet) are always visible to mentors
 
         result = []
         for sp in qs.select_related('user')[:50]:
