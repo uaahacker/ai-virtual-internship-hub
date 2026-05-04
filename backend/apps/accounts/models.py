@@ -125,6 +125,16 @@ class StudentProfile(models.Model):
         default=0,
         help_text='Number of tasks completed',
     )
+    # ML clustering fields — updated by StudentClusterer after each assessment
+    cluster_id = models.IntegerField(
+        default=0,
+        help_text='KMeans cluster assignment (0-3)',
+    )
+    cluster_label = models.CharField(
+        max_length=20,
+        default='Explorer',
+        help_text='Human-readable cluster label (Explorer/Developing/Competent/Expert)',
+    )
     mentor_assigned = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

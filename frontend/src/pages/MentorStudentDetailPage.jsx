@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { mentorService } from '../services/endpoints';
 import { FiArrowLeft, FiBarChart2, FiCheckCircle, FiClock } from 'react-icons/fi';
+import DashboardLayout from '../components/DashboardLayout';
 
 export default function MentorStudentDetailPage() {
   const { studentId } = useParams();
@@ -39,20 +40,20 @@ export default function MentorStudentDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <DashboardLayout>
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <div className="inline-block w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mb-4"></div>
             <p className="text-gray-600">Loading student details...</p>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (!student) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <DashboardLayout>
         <div className="max-w-4xl mx-auto">
           <button
             onClick={() => navigate('/mentor/students')}
@@ -70,13 +71,13 @@ export default function MentorStudentDetailPage() {
             </button>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto pb-8">
         {/* Back Button */}
         <button
           onClick={() => navigate('/mentor/students')}
@@ -225,8 +226,7 @@ export default function MentorStudentDetailPage() {
                       key={idx}
                       className="p-3 bg-orange-50 border border-orange-200 rounded-lg"
                     >
-                      <p className="font-medium text-gray-900 text-sm">{task.task__title}</p>
-                      <p className="text-xs text-gray-600 mt-1">Status: {task.status}</p>
+                      <p className="font-medium text-gray-900 text-sm">{task.task_title}</p>
                       <p className="text-xs text-gray-600">Progress: {task.progress_percentage}%</p>
                     </div>
                   ))}
@@ -251,7 +251,7 @@ export default function MentorStudentDetailPage() {
                       onClick={() => navigate(`/mentor/reviews/${task.id}`)}
                       className="w-full text-left p-3 bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 rounded-lg transition"
                     >
-                      <p className="font-medium text-gray-900 text-sm">{task.task__title}</p>
+                      <p className="font-medium text-gray-900 text-sm">{task.task_title}</p>
                       <p className="text-xs text-gray-600 mt-1">
                         Completed: {task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'N/A'}
                       </p>
@@ -263,6 +263,6 @@ export default function MentorStudentDetailPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

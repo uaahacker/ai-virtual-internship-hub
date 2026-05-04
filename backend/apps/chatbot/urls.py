@@ -1,7 +1,3 @@
-"""
-URL routes for Chatbot API endpoints.
-"""
-
 from django.urls import path
 from .views import (
     ChatSessionListCreateView,
@@ -10,6 +6,7 @@ from .views import (
     ChatFeedbackView,
     ChatSessionStatsView,
     ChatSessionArchiveView,
+    MentorChatView,
 )
 
 app_name = 'chatbot'
@@ -26,4 +23,7 @@ urlpatterns = [
     
     # Feedback
     path('feedback/', ChatFeedbackView.as_view(), name='submit-feedback'),
+
+    # Mentor unrestricted chat
+    path('mentor/chat/', MentorChatView.as_view(), name='mentor-chat'),
 ]

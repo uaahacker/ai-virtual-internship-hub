@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import TaskAssignment, TaskEvaluation, TaskCompletion, TaskMCQAttempt
 from apps.accounts.models import StudentProfile, MentorProfile, User
+from .ml_engine import DomainPredictor
 
 
 class StudentAnalyticsService:
@@ -122,6 +123,17 @@ class StudentAnalyticsService:
             'recommended_next_domain': recommended_domain or 'Programming',
         }
 
+    @staticmethod
+    def get_domain_predictions(student):
+        """
+        Return ML-predicted domain recommendations for this student.
+        Calls DomainPredictor which uses recency-weighted scoring + softmax.
+        """
+        try:
+            return DomainPredictor.predict(student)
+        except Exception:
+            return []
+
 
 class MentorAnalyticsService:
     """Service for mentor-specific analytics"""
@@ -129,59 +141,79 @@ class MentorAnalyticsService:
     @staticmethod
     def get_mentor_analytics(mentor):
         """Get comprehensive analytics for a mentor"""
-        
+        from apps.accounts.models import StudentProfile
+
         # Total assigned students
         assigned_students = StudentProfile.objects.filter(
             mentor_assigned=mentor
         ).count()
-        
-        # Pending mentor reviews
-        pending_reviews = TaskEvaluation.objects.filter(
-            evaluated_by__isnull=True,
-            task_completion__task_assignment__student__studentprofile__mentor_assigned=mentor
-        ).count()
-        
-        # Student performance overview
+
+        # Get mentor's student IDs to avoid deep ORM traversals
+        mentor_student_ids = list(
+            StudentProfile.objects.filter(mentor_assigned=mentor)
+            .values_list('user_id', flat=True)
+        )
+
+        # Pending mentor reviews (via TaskAssignment — avoids cross-collection join)
+        pending_reviews = (
+            TaskAssignment.objects.filter(
+                student_id__in=mentor_student_ids,
+                mentor_review_requested=True,
+                mentor_review_status='requested',
+            ).count()
+            if mentor_student_ids else 0
+        )
+
+        # Student performance overview — evaluations done by mentor
         student_evaluations = TaskEvaluation.objects.filter(
             evaluated_by=mentor,
-            status='evaluated'
-        ).select_related('task_completion__task_assignment__student')
-        
+            status='evaluated',
+        )
+
         students_performance = {}
         domain_distribution = {}
-        
+        total_score = 0.0
+        eval_count = 0
+
         for eval_obj in student_evaluations:
-            student = eval_obj.task_completion.task_assignment.student
-            domain = eval_obj.task_completion.task_assignment.task.domain
-            
+            try:
+                tc = eval_obj.task_completion
+                ta = tc.task_assignment
+                student = ta.student
+                domain = ta.task.domain
+            except Exception:
+                continue
+
             if student.id not in students_performance:
                 students_performance[student.id] = {
-                    'name': student.get_full_name() or student.username,
+                    'name': student.name,
                     'email': student.email,
                     'tasks_evaluated': 0,
                     'scores': [],
-                    'average_score': 0
+                    'average_score': 0,
                 }
-            
+
             students_performance[student.id]['tasks_evaluated'] += 1
             students_performance[student.id]['scores'].append(eval_obj.final_score)
-            
-            if domain not in domain_distribution:
-                domain_distribution[domain] = 0
-            domain_distribution[domain] += 1
-        
-        # Calculate averages
-        for student_id, perf in students_performance.items():
+            total_score += eval_obj.final_score
+            eval_count += 1
+            domain_distribution[domain] = domain_distribution.get(domain, 0) + 1
+
+        # Calculate per-student averages
+        for perf in students_performance.values():
             if perf['scores']:
                 perf['average_score'] = round(sum(perf['scores']) / len(perf['scores']), 2)
-            del perf['scores']  # Remove individual scores from response
-        
+            del perf['scores']  # Remove raw scores from response
+
+        avg_score = round(total_score / eval_count, 2) if eval_count > 0 else 0.0
+
         return {
             'total_assigned_students': assigned_students,
-            'pending_mentor_reviews': pending_reviews,
+            'pending_reviews': pending_reviews,
             'students_performance': list(students_performance.values()),
-            'domain_wise_student_distribution': domain_distribution,
-            'total_evaluations_completed': student_evaluations.count(),
+            'domain_distribution': domain_distribution,
+            'total_tasks_reviewed': eval_count,
+            'average_task_score': avg_score,
         }
 
 
@@ -193,9 +225,9 @@ class AdminAnalyticsService:
         """Get comprehensive analytics for admin"""
         
         # Total users by role
-        total_students = User.objects.filter(groups__name='Student').count()
-        total_mentors = User.objects.filter(groups__name='Mentor').count()
-        total_admins = User.objects.filter(groups__name='Admin').count()
+        total_students = User.objects.filter(role='Student').count()
+        total_mentors = User.objects.filter(role='Mentor').count()
+        total_admins = User.objects.filter(role='Admin').count()
         total_users = total_students + total_mentors + total_admins
         
         # Assessments attempted
@@ -224,12 +256,12 @@ class AdminAnalyticsService:
                 'user__taskevaluation',
                 filter=Q(user__taskevaluation__status='evaluated')
             )
-        ).values('user__id', 'user__get_full_name', 'student_count', 'evaluations_count')
-        
+        ).values('user__id', 'user__name', 'student_count', 'evaluations_count')
+
         mentor_load_list = [
             {
                 'mentor_id': item['user__id'],
-                'mentor_name': item['user__get_full_name'],
+                'mentor_name': item['user__name'],
                 'students_assigned': item['student_count'],
                 'evaluations_completed': item['evaluations_count']
             }
@@ -261,8 +293,21 @@ class AdminAnalyticsService:
             'total_evaluations': all_evaluations.count(),
         }
         
+        # Cluster distribution across all students
+        cluster_distribution = (
+            StudentProfile.objects
+            .values('cluster_label')
+            .annotate(count=Count('id'))
+            .order_by('cluster_label')
+        )
+        cluster_breakdown = [
+            {'label': item['cluster_label'], 'count': item['count']}
+            for item in cluster_distribution
+        ]
+
         return {
             'system_metrics': system_metrics,
             'popular_domains': popular_domains,
             'mentor_load_distribution': mentor_load_list,
+            'student_cluster_distribution': cluster_breakdown,
         }

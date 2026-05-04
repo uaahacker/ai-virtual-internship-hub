@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 import logging
 
-from apps.core.permissions import IsStudent
+from apps.core.permissions import IsStudent, IsMentor
 from .models import ChatSession, ChatMessage, ChatFeedback
 from .service import ChatbotService
 from .serializers import (
@@ -317,3 +317,67 @@ class ChatSessionArchiveView(APIView):
                 'success': False,
                 'error': 'Failed to archive session'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MentorChatView(APIView):
+    """
+    POST /api/chatbot/mentor/chat/
+    Unrestricted AI chat for mentors. Directly proxies to OpenRouter API.
+    No topic restrictions — mentor can ask anything.
+    Body: { message: str, history: [ {role: 'user'|'assistant', content: str} ] }
+    """
+    permission_classes = [IsAuthenticated, IsMentor]
+
+    def post(self, request):
+        message = request.data.get('message', '').strip()
+        if not message:
+            return Response(
+                {'success': False, 'error': 'message is required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        history = request.data.get('history', [])
+        if not isinstance(history, list):
+            history = []
+
+        # Keep last 20 history messages to limit token usage
+        history = history[-20:]
+
+        try:
+            from .providers import ProviderFactory
+            provider = ProviderFactory.create_provider()
+
+            system_prompt = (
+                "You are an expert AI assistant for mentors on the Virtual Internship Hub platform. "
+                "You help mentors guide students, provide career advice, evaluate student work, "
+                "suggest learning resources, and answer any questions they have. "
+                "You have no topic restrictions — answer all mentor questions fully and helpfully. "
+                "Be professional, insightful, and thorough."
+            )
+
+            messages = [{'role': 'system', 'content': system_prompt}]
+            for h in history:
+                if h.get('role') in ('user', 'assistant') and h.get('content'):
+                    messages.append({'role': h['role'], 'content': h['content']})
+            messages.append({'role': 'user', 'content': message})
+
+            response_text = provider.generate_response(
+                messages,
+                temperature=0.7,
+                max_tokens=800
+            )
+
+            return Response({
+                'success': True,
+                'data': {
+                    'reply': response_text,
+                    'role': 'assistant',
+                }
+            })
+
+        except Exception as e:
+            logger.error(f"Mentor chat error: {str(e)}")
+            return Response({
+                'success': False,
+                'error': 'AI service temporarily unavailable. Please try again.'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)

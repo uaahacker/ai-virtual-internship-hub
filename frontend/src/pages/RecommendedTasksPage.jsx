@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { taskService } from '../services/endpoints';
 import TaskCard from '../components/TaskCard';
+import DashboardLayout from '../components/DashboardLayout';
 
 export default function RecommendedTasksPage() {
   const { user } = useAuth();
@@ -53,8 +54,9 @@ export default function RecommendedTasksPage() {
 
   const handleRecommendationResponse = async (assignmentId, accept) => {
     try {
+      setError('');
       const response = await taskService.acceptTask(assignmentId, accept);
-      if (response.success) {
+      if (response.data.success) {
         // Remove task from list
         setTasks(tasks.filter(task => task.id !== assignmentId));
         // Show success message
@@ -64,7 +66,7 @@ export default function RecommendedTasksPage() {
             : 'Recommendation declined.'
         );
       } else {
-        setError(response.error?.message || 'Failed to process recommendation');
+        setError(response.data.error?.message || response.data.error || 'Failed to process recommendation');
       }
     } catch (err) {
       setError('Error processing recommendation');
@@ -77,10 +79,10 @@ export default function RecommendedTasksPage() {
     if (sortBy === 'score') {
       sorted.sort((a, b) => (b.recommended_score || 0) - (a.recommended_score || 0));
     } else if (sortBy === 'domain') {
-      sorted.sort((a, b) => (a.task?.domain || '').localeCompare(b.task?.domain || ''));
+      sorted.sort((a, b) => (a.task_domain || '').localeCompare(b.task_domain || ''));
     } else if (sortBy === 'difficulty') {
       const diffOrder = { 'Beginner': 1, 'Intermediate': 2, 'Advanced': 3 };
-      sorted.sort((a, b) => (diffOrder[a.task?.difficulty] || 0) - (diffOrder[b.task?.difficulty] || 0));
+      sorted.sort((a, b) => (diffOrder[a.task_difficulty] || 0) - (diffOrder[b.task_difficulty] || 0));
     }
     return sorted;
   };
@@ -88,7 +90,7 @@ export default function RecommendedTasksPage() {
   const getFilteredTasks = () => {
     let filtered = getSortedTasks();
     if (filterDomain && filterDomain !== '') {
-      filtered = filtered.filter(task => task.task?.domain === filterDomain);
+      filtered = filtered.filter(task => task.task_domain === filterDomain);
     }
     return filtered;
   };
@@ -96,8 +98,8 @@ export default function RecommendedTasksPage() {
   const filteredTasks = getFilteredTasks();
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+    <DashboardLayout>
+      <div className="pb-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Recommended Tasks</h1>
           <p className="text-gray-600">
@@ -165,6 +167,7 @@ export default function RecommendedTasksPage() {
                   isRecommended={true}
                   matchScore={task.recommended_score}
                   reason={task.recommendation_reason}
+                  explanation={task.recommendation_explanation}
                   onAccept={() => handleRecommendationResponse(task.id, true)}
                   onDecline={() => handleRecommendationResponse(task.id, false)}
                 />
@@ -179,6 +182,6 @@ export default function RecommendedTasksPage() {
           </>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

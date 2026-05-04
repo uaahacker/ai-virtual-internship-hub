@@ -42,6 +42,8 @@ import MentorAssignedStudentsPage from './pages/MentorAssignedStudentsPage';
 import MentorStudentDetailPage from './pages/MentorStudentDetailPage';
 import MentorPendingReviewsPage from './pages/MentorPendingReviewsPage';
 import MentorReviewTaskPage from './pages/MentorReviewTaskPage';
+import MentorSelectStudentsPage from './pages/MentorSelectStudentsPage';
+import MentorChatPage from './pages/MentorChatPage';
 
 // Settings pages
 import StudentSettingsPage from './pages/StudentSettingsPage';
@@ -100,6 +102,8 @@ function App() {
       <Route path="/mentor/students/:studentId" element={<ProtectedRoute role="Mentor"><MentorStudentDetailPage /></ProtectedRoute>} />
       <Route path="/mentor/reviews" element={<ProtectedRoute role="Mentor"><MentorPendingReviewsPage /></ProtectedRoute>} />
       <Route path="/mentor/reviews/:assignmentId" element={<ProtectedRoute role="Mentor"><MentorReviewTaskPage /></ProtectedRoute>} />
+      <Route path="/mentor/select-students" element={<ProtectedRoute role="Mentor"><MentorSelectStudentsPage /></ProtectedRoute>} />
+      <Route path="/mentor/chat" element={<ProtectedRoute role="Mentor"><MentorChatPage /></ProtectedRoute>} />
       <Route path="/mentor/settings" element={<ProtectedRoute role="Mentor"><MentorSettingsPage /></ProtectedRoute>} />
 
       {/* Admin routes */}

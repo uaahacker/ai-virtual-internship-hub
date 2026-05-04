@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { taskService } from '../services/endpoints';
+import DashboardLayout from '../components/DashboardLayout';
 
 export default function MyTasksPage() {
   const { user } = useAuth();
@@ -39,10 +40,10 @@ export default function MyTasksPage() {
     try {
       setLoading(true);
       const response = await taskService.getMyTasks();
-      if (response.success) {
-        setTasks(response.data);
+      if (response.data.success) {
+        setTasks(response.data.data || []);
       } else {
-        setError(response.error?.message || 'Failed to load tasks');
+        setError(response.data.error?.message || 'Failed to load tasks');
       }
     } catch (err) {
       setError('Error loading tasks');
@@ -58,13 +59,13 @@ export default function MyTasksPage() {
       const response = await taskService.updateTaskProgress(taskId, {
         status: 'in_progress',
       });
-      if (response.success) {
+      if (response.data.success) {
         setTasks(
-          tasks.map(t => (t.id === taskId ? response.data : t))
+          tasks.map(t => (t.id === taskId ? response.data.data : t))
         );
-        setSelectedTask(response.data);
+        setSelectedTask(response.data.data);
       } else {
-        setError(response.error?.message || 'Failed to start task');
+        setError(response.data.error?.message || 'Failed to start task');
       }
     } catch (err) {
       setError('Error starting task');
@@ -80,13 +81,13 @@ export default function MyTasksPage() {
       const response = await taskService.updateTaskProgress(taskId, {
         progress_percentage: progress,
       });
-      if (response.success) {
+      if (response.data.success) {
         setTasks(
-          tasks.map(t => (t.id === taskId ? response.data : t))
+          tasks.map(t => (t.id === taskId ? response.data.data : t))
         );
-        setSelectedTask(response.data);
+        setSelectedTask(response.data.data);
       } else {
-        setError(response.error?.message || 'Failed to update progress');
+        setError(response.data.error?.message || 'Failed to update progress');
       }
     } catch (err) {
       setError('Error updating progress');
@@ -105,14 +106,14 @@ export default function MyTasksPage() {
     try {
       setUpdating(true);
       const response = await taskService.requestMentorReview(taskId);
-      if (response.success) {
+      if (response.data.success) {
         setTasks(
-          tasks.map(t => (t.id === taskId ? response.data : t))
+          tasks.map(t => (t.id === taskId ? response.data.data : t))
         );
-        setSelectedTask(response.data);
+        setSelectedTask(response.data.data);
         alert('Mentor review requested successfully!');
       } else {
-        setError(response.error?.message || 'Failed to request review');
+        setError(response.data.error?.message || 'Failed to request review');
       }
     } catch (err) {
       setError('Error requesting review');
@@ -133,8 +134,8 @@ export default function MyTasksPage() {
   const activeTask = selectedTask || filteredTasks[0];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+    <DashboardLayout>
+      <div className="pb-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">My Tasks</h1>
           <p className="text-gray-600">
@@ -363,6 +364,6 @@ export default function MyTasksPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

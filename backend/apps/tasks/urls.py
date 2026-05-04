@@ -25,6 +25,7 @@ from .views import (
     UpdatePortfolioItemView,
     PortfolioStatsView,
     ExportPortfolioView,
+    TaskRecommendationExplanationView,
 )
 from .analytics_views import (
     StudentAnalyticsView,
@@ -49,6 +50,7 @@ urlpatterns = [
     path('assignments/<int:assignment_id>/update/', UpdateTaskAssignmentView.as_view(), name='update-assignment'),
     path('assignments/<int:assignment_id>/request-review/', RequestMentorReviewView.as_view(), name='request-review'),
     path('assignments/<int:assignment_id>/complete/', CompleteTaskView.as_view(), name='complete-task'),
+    path('assignments/<int:assignment_id>/explanation/', TaskRecommendationExplanationView.as_view(), name='recommendation-explanation'),
 
     path('<int:task_id>/mcq-questions/', TaskMCQListView.as_view(), name='task-mcq-list'),
     path('completions/<int:completion_id>/submit-mcq/', SubmitMCQAttemptsView.as_view(), name='submit-mcq'),

@@ -100,6 +100,7 @@ class RecommendedTaskSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'task', 'task_title', 'task_domain', 'task_difficulty',
             'task_details', 'recommended_score', 'recommendation_reason',
+            'recommendation_explanation',
             'status', 'is_accepted', 'created_at',
         ]
         read_only_fields = fields

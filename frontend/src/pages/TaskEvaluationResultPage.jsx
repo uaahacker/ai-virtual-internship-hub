@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { taskService } from '../services/endpoints';
 import { FiTrendingUp, FiCheckCircle, FiAlertCircle, FiHome, FiRefreshCw } from 'react-icons/fi';
+import DashboardLayout from '../components/DashboardLayout';
 
 export default function TaskEvaluationResultPage() {
   const { evaluationId } = useParams();
@@ -65,18 +66,20 @@ export default function TaskEvaluationResultPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8 px-4">
-        <div className="text-center">
-          <div className="inline-block w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-600">Loading your evaluation results...</p>
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="inline-block w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-600">Loading your evaluation results...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto pb-8">
         {error ? (
           <div className="bg-white rounded-lg border border-red-200 p-8 text-center">
             <FiAlertCircle className="mx-auto text-red-500 mb-4" size={48} />
@@ -263,6 +266,6 @@ export default function TaskEvaluationResultPage() {
           </>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

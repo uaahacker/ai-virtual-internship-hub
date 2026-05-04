@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { mentorService } from '../services/endpoints';
 import { FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
+import DashboardLayout from '../components/DashboardLayout';
 
 export default function MentorReviewTaskPage() {
   const { assignmentId } = useParams();
@@ -63,7 +64,7 @@ export default function MentorReviewTaskPage() {
       if (response.data.success) {
         setSuccess('Review submitted successfully!');
         setTimeout(() => {
-          navigate('/mentor/pending-reviews');
+          navigate('/mentor/reviews');
         }, 1500);
       } else {
         setError(response.data.error?.message || 'Failed to submit review');
@@ -78,23 +79,23 @@ export default function MentorReviewTaskPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <DashboardLayout>
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <div className="inline-block w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mb-4"></div>
             <p className="text-gray-600">Loading review...</p>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (!review) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <DashboardLayout>
         <div className="max-w-3xl mx-auto">
           <button
-            onClick={() => navigate('/mentor/pending-reviews')}
+            onClick={() => navigate('/mentor/reviews')}
             className="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
           >
             <FiArrowLeft size={18} /> Back to Reviews
@@ -103,16 +104,16 @@ export default function MentorReviewTaskPage() {
             <p className="text-gray-600 mb-4">{error || 'Review not found'}</p>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto">
+    <DashboardLayout>
+      <div className="max-w-3xl mx-auto pb-8">
         {/* Back Button */}
         <button
-          onClick={() => navigate('/mentor/pending-reviews')}
+          onClick={() => navigate('/mentor/reviews')}
           className="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
         >
           <FiArrowLeft size={18} /> Back to Reviews
@@ -230,7 +231,7 @@ export default function MentorReviewTaskPage() {
               {submitting ? 'Submitting...' : 'Submit Review'}
             </button>
             <button
-              onClick={() => navigate('/mentor/pending-reviews')}
+              onClick={() => navigate('/mentor/reviews')}
               disabled={submitting}
               className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 font-medium transition"
             >
@@ -239,6 +240,6 @@ export default function MentorReviewTaskPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

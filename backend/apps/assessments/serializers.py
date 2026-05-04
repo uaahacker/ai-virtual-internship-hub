@@ -72,6 +72,10 @@ class AttemptResultSerializer(serializers.ModelSerializer):
             'score', 'total_questions', 'percentage',
             'skill_level', 'recommended_domains', 'attempted_at',
             'detailed_breakdown', 'strengths', 'weaknesses', 'next_steps',
+            # rich evaluation fields
+            'domain_score', 'readiness_level',
+            'concept_scores', 'skill_profile_vector',
+            'improvement_delta', 'recommended_task_type',
         ]
         read_only_fields = fields
 
@@ -88,5 +92,9 @@ class AttemptDetailedSerializer(serializers.ModelSerializer):
             'score', 'total_questions', 'percentage',
             'skill_level', 'recommended_domains', 'attempted_at',
             'detailed_breakdown', 'strengths', 'weaknesses', 'next_steps',
+            # rich evaluation fields
+            'domain_score', 'readiness_level',
+            'concept_scores', 'skill_profile_vector',
+            'improvement_delta', 'recommended_task_type',
         ]
         read_only_fields = fields

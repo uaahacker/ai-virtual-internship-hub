@@ -16,6 +16,9 @@ from .serializers import (
     AttemptResultSerializer,
 )
 from .recommendation import generate_recommendation, calculate_performance_breakdown
+from .nlp_feedback import generate_feedback
+from .evaluation_engine import evaluate as run_evaluation
+from apps.tasks.ml_engine import StudentClusterer
 
 
 class AssessmentListView(APIView):
@@ -84,7 +87,9 @@ class SubmitAssessmentView(APIView):
         serializer.is_valid(raise_exception=True)
         submitted_answers = serializer.validated_data['answers']
 
-        # 3) Calculate score
+        # 3 + 4) Run full evaluation engine
+        # Returns concept scores, weighted domain score, readiness level,
+        # skill profile vector, improvement delta, tags, and next step.
         questions = list(Question.objects.filter(assessment=assessment))
         total = len(questions)
 
@@ -94,73 +99,75 @@ class SubmitAssessmentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        correct = 0
-        for question in questions:
-            submitted = submitted_answers.get(str(question.id))
-            if submitted and submitted == question.correct_option:
-                correct += 1
+        eval_result = run_evaluation(assessment, questions, submitted_answers, request.user)
 
-        percentage = (correct / total) * 100
+        percentage   = eval_result['percentage']
+        correct      = eval_result['total_score']
+        skill_level  = eval_result['skill_level']
 
-        # 4) Generate recommendation
+        # 4b) Domain-level recommendation (existing rules engine, unchanged)
         recommendation = generate_recommendation(assessment.domain, percentage)
-        skill_level = recommendation['skill_level']
-
-        # 4.5) Calculate detailed breakdown and analysis
-        detailed_breakdown = calculate_performance_breakdown(questions, submitted_answers)
-        
-        # Calculate strengths and weaknesses based on performance
-        correct_questions = [
-            q for q in questions 
-            if submitted_answers.get(str(q.id)) == q.correct_option
-        ]
-        incorrect_questions = [
-            q for q in questions 
-            if submitted_answers.get(str(q.id)) != q.correct_option
-        ]
-        
-        strengths = [
-            f"Correctly answered {len(correct_questions)} out of {total} questions"
-        ]
-        if correct_questions:
-            strengths.append(
-                f"Strong grasp of core concepts ({(len(correct_questions)/total)*100:.0f}% accuracy)"
-            )
-        
-        weaknesses = []
-        if incorrect_questions:
-            weak_pct = (len(incorrect_questions) / total) * 100
-            weaknesses.append(
-                f"Need improvement in {len(incorrect_questions)} areas ({weak_pct:.0f}% of questions)"
-            )
-            if skill_level == 'Advanced':
-                weaknesses.append("Focus on the few challenging areas to maintain excellence")
-            elif skill_level == 'Intermediate':
-                weaknesses.append("Review the concepts you found challenging")
-            else:
-                weaknesses.append("Prioritize studying the fundamental concepts you missed")
-        
         next_steps = recommendation.get('improvement_areas', [])
-        
-        # 5) Store attempt with detailed analysis
+        if eval_result['recommended_next_step']:
+            next_steps = [eval_result['recommended_next_step']] + next_steps
+
+        # 4.6) NLP-generated feedback paragraph (local, no external API)
+        previous_attempts = AssessmentAttempt.objects.filter(
+            student=request.user,
+            assessment__domain=assessment.domain,
+        ).order_by('-attempted_at')
+
+        attempt_number = previous_attempts.count() + 1
+        previous_percentage = None
+        if previous_attempts.exists():
+            previous_percentage = float(previous_attempts.first().percentage)
+
+        nlp_feedback = generate_feedback(
+            domain=assessment.domain,
+            percentage=percentage,
+            skill_level=skill_level,
+            correct_count=correct,
+            total_count=total,
+            strengths=eval_result['strength_tags'],
+            weaknesses=eval_result['weakness_tags'],
+            improvement_areas=next_steps,
+            attempt_number=attempt_number,
+            previous_percentage=previous_percentage,
+        )
+
+        # 5) Persist attempt with all structured evaluation fields
         attempt = AssessmentAttempt.objects.create(
             student=request.user,
             assessment=assessment,
             answers=submitted_answers,
             score=correct,
             total_questions=total,
-            percentage=round(percentage, 2),
+            percentage=percentage,
             skill_level=skill_level,
             recommended_domains=[recommendation],
-            detailed_breakdown=detailed_breakdown,
-            strengths=strengths,
-            weaknesses=weaknesses,
+            detailed_breakdown=eval_result['detailed_breakdown'],
+            strengths=eval_result['strengths'],
+            weaknesses=eval_result['weaknesses'],
             next_steps=next_steps,
+            # new rich fields
+            concept_scores=eval_result['concept_scores'],
+            domain_score=eval_result['domain_score'],
+            readiness_level=eval_result['readiness_level'],
+            skill_profile_vector=eval_result['skill_profile_vector'],
+            improvement_delta=eval_result['improvement_delta'],
+            recommended_task_type=eval_result['recommended_task_type'],
         )
+
+        # 5.1) Update student cluster (async-safe — must not block submission)
+        try:
+            StudentClusterer.update_student_cluster(request.user)
+        except Exception:
+            pass
 
         # 6) Return result
         result = AttemptResultSerializer(attempt).data
         result['recommendation'] = recommendation
+        result['feedback'] = nlp_feedback
 
         return Response(
             {

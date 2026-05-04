@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import StudentProfileCard from '../components/StudentProfileCard';
 import { useAuth } from '../contexts/AuthContext';
-import { assessmentService, profileService } from '../services/endpoints';
+import { assessmentService, profileService, taskService } from '../services/endpoints';
 import { Card, CardHeader, CardBody, SectionCard, StatCard, Badge } from '../components/CardComponents';
 import { ProgressIndicator, CircularProgress, EmptyState } from '../components/ProgressAndUtilityComponents';
 
@@ -11,17 +11,20 @@ export default function StudentDashboard() {
   const { user } = useAuth();
   const [attempts, setAttempts] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [attemptsRes, profileRes] = await Promise.all([
+        const [attemptsRes, profileRes, tasksRes] = await Promise.all([
           assessmentService.myAttempts(),
           profileService.getStudentProfile(),
+          taskService.getMyTasks(),
         ]);
         setAttempts(attemptsRes.data.data || []);
         setProfile(profileRes.data.data);
+        setTasks(tasksRes.data.data || []);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -41,6 +44,11 @@ export default function StudentDashboard() {
   });
   const skills = Object.values(skillMap);
   const avgScore = skills.length > 0 ? Math.round(skills.reduce((sum, s) => sum + s.percentage, 0) / skills.length) : 0;
+
+  // Task counts
+  const activeTasks = tasks.filter(t => t.status === 'accepted' || t.status === 'in_progress');
+  const completedTasks = tasks.filter(t => t.status === 'completed');
+  const inProgressTasks = tasks.filter(t => t.status === 'in_progress');
 
   const getSkillStatus = (level) => {
     if (level === 'Advanced') return { status: 'success', icon: '✓' };
@@ -63,11 +71,13 @@ export default function StudentDashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Assessments Taken" value={attempts.length} icon="📋" />
-        <StatCard label="Average Score" value={`${avgScore}%`} icon="⭐" />
-        <StatCard label="Skills Mastered" value={skills.filter(s => s.skill_level === 'Advanced').length} icon="🎯" />
-        <StatCard label="In Progress" value={skills.filter(s => s.skill_level === 'Intermediate').length} icon="🔄" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <StatCard label="Assessments" value={attempts.length} icon="📋" />
+        <StatCard label="Avg Score" value={`${avgScore}%`} icon="⭐" />
+        <StatCard label="Skills Mastered" value={skills.filter(s => s.skill_level === 'Advanced').length} icon="🏆" />
+        <StatCard label="Active Tasks" value={activeTasks.length} icon="⚡" />
+        <StatCard label="Completed Tasks" value={completedTasks.length} icon="✅" />
+        <StatCard label="In Progress" value={inProgressTasks.length} icon="🔄" />
       </div>
 
       {/* Profile Card */}
@@ -144,7 +154,7 @@ export default function StudentDashboard() {
               title="📋 Recent Assessments"
               subtitle={`${attempts.length} total attempts`}
               action={
-                <Link to="/assessments" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                <Link to="/student/assessments" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
                   View All →
                 </Link>
               }
@@ -169,6 +179,60 @@ export default function StudentDashboard() {
               </div>
             </SectionCard>
           )}
+
+          {/* Active Tasks */}
+          <SectionCard
+            title="⚡ Active Tasks"
+            subtitle={activeTasks.length > 0 ? `${activeTasks.length} task(s) in progress` : 'No active tasks'}
+            action={
+              <Link to="/student/tasks/my-tasks" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                View All →
+              </Link>
+            }
+          >
+            {activeTasks.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-slate-500 text-sm mb-3">No active tasks yet.</p>
+                <Link
+                  to="/student/tasks/recommended"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                >
+                  Browse Recommendations →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeTasks.slice(0, 4).map((t) => (
+                  <Link
+                    key={t.id}
+                    to="/student/tasks/my-tasks"
+                    className="block p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="font-medium text-slate-900 text-sm truncate flex-1 mr-2">
+                        {t.task_details?.title || t.task_title || 'Task'}
+                      </h4>
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                        t.status === 'in_progress'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {t.status === 'in_progress' ? 'In Progress' : 'Accepted'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-2">{t.task_details?.domain || t.task_domain}</p>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5">
+                      <div
+                        className="bg-blue-500 h-1.5 rounded-full transition-all"
+                        style={{ width: `${t.progress_percentage || 0}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">{t.progress_percentage || 0}% complete</p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </SectionCard>
         </div>
 
         {/* Quick Access Cards - Right Section */}
@@ -186,6 +250,27 @@ export default function StudentDashboard() {
                 className="block px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-center"
               >
                 Browse →
+              </Link>
+            </CardBody>
+          </Card>
+
+          {/* My Tasks CTA */}
+          <Card className="bg-gradient-to-br from-yellow-50 to-orange-100 border-yellow-200">
+            <CardBody className="text-center">
+              <div className="text-4xl mb-3">✅</div>
+              <h3 className="font-semibold text-slate-900 mb-1">My Tasks</h3>
+              <p className="text-xs text-slate-600 mb-1">
+                <span className="font-bold text-yellow-700">{activeTasks.length}</span> active &nbsp;·&nbsp;
+                <span className="font-bold text-green-700">{completedTasks.length}</span> done
+              </p>
+              <p className="text-sm text-slate-700 mb-4">
+                Track progress and submit your work
+              </p>
+              <Link
+                to="/student/tasks/my-tasks"
+                className="block px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 transition-colors text-center"
+              >
+                Go to Tasks →
               </Link>
             </CardBody>
           </Card>

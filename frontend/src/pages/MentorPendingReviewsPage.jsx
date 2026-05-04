@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { mentorService } from '../services/endpoints';
 import { FiMessageSquare, FiArrowRight } from 'react-icons/fi';
+import DashboardLayout from '../components/DashboardLayout';
 
 export default function MentorPendingReviewsPage() {
   const { user } = useAuth();
@@ -78,8 +79,8 @@ export default function MentorPendingReviewsPage() {
   }, [filterDomain, sortBy, reviews]);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-5xl mx-auto">
+    <DashboardLayout>
+      <div className="max-w-5xl mx-auto pb-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Pending Task Reviews</h1>
           <p className="text-gray-600">
@@ -207,6 +208,6 @@ export default function MentorPendingReviewsPage() {
           </>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

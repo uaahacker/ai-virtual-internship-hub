@@ -40,6 +40,9 @@ export const taskService = {
 
   // Recommendations
   getRecommendations: () => api.get('/tasks/recommended/'),
+  getRecommendationExplanation: (assignmentId) => api.get(
+    `/tasks/assignments/${assignmentId}/explanation/`
+  ),
 
   // My tasks
   getMyTasks: (status) => status
@@ -87,6 +90,16 @@ export const mentorService = {
     data
   ),
   autoAssignMentors: () => api.post('/auth/mentor/auto-assign/'),
+
+  // Student assignment
+  getAvailableStudents: (domain) => domain
+    ? api.get('/auth/mentor/available-students/', { params: { domain } })
+    : api.get('/auth/mentor/available-students/'),
+  assignStudent: (studentId) => api.post('/auth/mentor/assign-student/', { student_id: studentId }),
+  unassignStudent: (studentId) => api.post(`/auth/mentor/unassign-student/${studentId}/`),
+
+  // Mentor AI chat (unrestricted)
+  chat: (message, history = []) => api.post('/chatbot/mentor/chat/', { message, history }),
 };
 
 export const analyticsService = {

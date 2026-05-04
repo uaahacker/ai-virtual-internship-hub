@@ -148,19 +148,19 @@ const MentorAnalyticsDashboard = () => {
           />
           <StatCard
             title="Pending Reviews"
-            value={analytics.pending_mentor_reviews || 0}
+            value={analytics.pending_reviews || 0}
             subtitle="Tasks awaiting evaluation"
           />
           <StatCard
-            title="Evaluations Completed"
-            value={analytics.total_evaluations_completed || 0}
+            title="Tasks Reviewed"
+            value={analytics.total_tasks_reviewed || 0}
           />
         </div>
 
         {/* Detailed Tables */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <StudentPerformanceTable students={analytics.students_performance} />
-          <DomainDistributionTable distribution={analytics.domain_wise_student_distribution} />
+          <DomainDistributionTable distribution={analytics.domain_distribution} />
         </div>
       </div>
     </DashboardLayout>

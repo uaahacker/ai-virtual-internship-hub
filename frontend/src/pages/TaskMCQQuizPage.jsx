@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { taskService } from '../services/endpoints';
 import { FiCheckCircle, FiArrowRight, FiArrowLeft, FiClock } from 'react-icons/fi';
+import DashboardLayout from '../components/DashboardLayout';
 
 export default function TaskMCQQuizPage() {
   const { completionId, taskId } = useParams();
@@ -140,18 +141,20 @@ export default function TaskMCQQuizPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8 px-4">
-        <div className="text-center">
-          <div className="inline-block w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-600">Loading quiz questions...</p>
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="inline-block w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-600">Loading quiz questions...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto pb-8">
         {/* Header */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between gap-4">
@@ -311,6 +314,6 @@ export default function TaskMCQQuizPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

@@ -9,6 +9,7 @@ from .views import (
     MentorProfileView, MentorProfileDetailView,
     MentorAssignedStudentsView, MentorStudentDetailView,
     MentorPendingReviewsView, MentorSubmitReviewView,
+    MentorAvailableStudentsView, MentorSelfAssignStudentView, MentorUnassignStudentView,
     AutoAssignMentorView, UpdateProfileView, ChangePasswordView,
 )
 
@@ -36,6 +37,9 @@ urlpatterns = [
     path('mentor/students/<int:student_id>/', MentorStudentDetailView.as_view(), name='mentor-student-detail'),
     path('mentor/pending-reviews/', MentorPendingReviewsView.as_view(), name='mentor-pending-reviews'),
     path('mentor/reviews/<int:assignment_id>/submit/', MentorSubmitReviewView.as_view(), name='mentor-submit-review'),
+    path('mentor/available-students/', MentorAvailableStudentsView.as_view(), name='mentor-available-students'),
+    path('mentor/assign-student/', MentorSelfAssignStudentView.as_view(), name='mentor-assign-student'),
+    path('mentor/unassign-student/<int:student_id>/', MentorUnassignStudentView.as_view(), name='mentor-unassign-student'),
     
     # Auto-assign mentor
     path('mentor/auto-assign/', AutoAssignMentorView.as_view(), name='auto-assign-mentor'),

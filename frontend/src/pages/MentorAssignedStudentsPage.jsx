@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { mentorService } from '../services/endpoints';
 import { FiSearch, FiArrowRight } from 'react-icons/fi';
+import DashboardLayout from '../components/DashboardLayout';
 
 export default function MentorAssignedStudentsPage() {
   const { user } = useAuth();
@@ -72,10 +73,10 @@ export default function MentorAssignedStudentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-5xl mx-auto">
+    <DashboardLayout>
+      <div className="max-w-5xl mx-auto pb-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Assigned Students</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Students</h1>
           <p className="text-gray-600">
             Manage your {students.length} assigned student{students.length !== 1 ? 's' : ''}.
           </p>
@@ -96,12 +97,13 @@ export default function MentorAssignedStudentsPage() {
           </div>
         ) : students.length === 0 ? (
           <div className="bg-white rounded-lg p-8 text-center border border-gray-200">
+            <div className="text-4xl mb-3">👥</div>
             <p className="text-gray-600 mb-4">No students assigned yet.</p>
             <button
-              onClick={() => navigate('/mentor/dashboard')}
+              onClick={() => navigate('/mentor/select-students')}
               className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800"
             >
-              Back to Dashboard
+              Select Students →
             </button>
           </div>
         ) : (
@@ -219,6 +221,6 @@ export default function MentorAssignedStudentsPage() {
           </>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

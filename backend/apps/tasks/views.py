@@ -87,8 +87,22 @@ class RecommendedTasksView(APIView):
                 assignment, created = TaskAssignment.objects.get_or_create(
                     student=student,
                     task=task,
-                    defaults={'status': 'recommended', 'recommended_score': rec['score'], 'recommendation_reason': rec['reason']}
+                    defaults={
+                        'status': 'recommended',
+                        'recommended_score': rec['score'],
+                        'recommendation_reason': rec['reason'],
+                        'recommendation_explanation': rec.get('explanation', {}),
+                    }
                 )
+                # Refresh explanation on existing assignments (scores may have improved)
+                if not created and rec.get('explanation'):
+                    assignment.recommended_score = rec['score']
+                    assignment.recommendation_reason = rec['reason']
+                    assignment.recommendation_explanation = rec['explanation']
+                    assignment.save(update_fields=[
+                        'recommended_score', 'recommendation_reason',
+                        'recommendation_explanation',
+                    ])
                 serializer = RecommendedTaskSerializer(assignment)
                 result.append(serializer.data)
             
@@ -416,3 +430,59 @@ class ExportPortfolioView(APIView):
             return Response({'success': False, 'message': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
         export_data = PortfolioService.export_portfolio_as_json(portfolio)
         return Response({'success': True, 'data': export_data})
+
+
+class TaskRecommendationExplanationView(APIView):
+    """
+    GET /tasks/assignments/<id>/explanation/
+    Returns the structured per-component explanation for a recommended task.
+    Students can only access their own assignments.
+    Mentors/Admins can access any assignment.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, assignment_id):
+        try:
+            assignment = TaskAssignment.objects.select_related('task', 'student').get(
+                pk=assignment_id
+            )
+        except TaskAssignment.DoesNotExist:
+            return Response(
+                {'success': False, 'error': 'Assignment not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Permission: students see only their own; mentors/admins see all
+        if request.user.role == 'Student' and assignment.student_id != request.user.id:
+            return Response(
+                {'success': False, 'error': 'Permission denied.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        explanation = assignment.recommendation_explanation or {}
+
+        # If empty (old record), recompute live
+        if not explanation:
+            from .ml_engine import explain_recommendation, ContentBasedRecommender
+            student_vec = ContentBasedRecommender.build_student_vector_from_db(
+                assignment.student
+            )
+            explanation = explain_recommendation(
+                student=assignment.student,
+                task=assignment.task,
+                student_vec=student_vec,
+            )
+            assignment.recommendation_explanation = explanation
+            assignment.save(update_fields=['recommendation_explanation'])
+
+        return Response({
+            'success': True,
+            'data': {
+                'assignment_id': assignment.id,
+                'task_title': assignment.task.title,
+                'task_domain': assignment.task.domain,
+                'recommended_score': assignment.recommended_score,
+                'recommendation_reason': assignment.recommendation_reason,
+                'explanation': explanation,
+            },
+        })

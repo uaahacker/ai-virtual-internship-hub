@@ -170,7 +170,8 @@ function getNavItems(role) {
       return [
         { path: '/student/dashboard', label: 'Dashboard', icon: '📊' },
         { path: '/student/assessments', label: 'Assessments', icon: '📋' },
-        { path: '/student/tasks/recommended', label: 'Recommended', icon: '🎯' },
+        { path: '/student/tasks/recommended', label: 'Recommended Tasks', icon: '🎯' },
+        { path: '/student/tasks/my-tasks', label: 'My Tasks', icon: '✅' },
         { path: '/student/portfolio', label: 'Portfolio', icon: '🎨' },
         { path: '/student/analytics', label: 'Analytics', icon: '📈' },
         { path: '/student/chat', label: 'AI Chat', icon: '💬' },
@@ -178,9 +179,11 @@ function getNavItems(role) {
     case 'Mentor':
       return [
         { path: '/mentor/dashboard', label: 'Dashboard', icon: '📊' },
-        { path: '/mentor/students', label: 'Students', icon: '👥' },
-        { path: '/mentor/reviews', label: 'Reviews', icon: '✓' },
+        { path: '/mentor/students', label: 'My Students', icon: '👥' },
+        { path: '/mentor/select-students', label: 'Select Students', icon: '➕' },
+        { path: '/mentor/reviews', label: 'Reviews', icon: '📋' },
         { path: '/mentor/analytics', label: 'Analytics', icon: '📈' },
+        { path: '/mentor/chat', label: 'AI Assistant', icon: '💬' },
       ];
     case 'Admin':
       return [

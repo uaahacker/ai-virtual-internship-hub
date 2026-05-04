@@ -326,31 +326,50 @@ class MentorStudentDetailView(APIView):
         from apps.assessments.models import AssessmentAttempt
         attempts = AssessmentAttempt.objects.filter(student_id=student_id)
         
+        attempt_list = list(attempts.select_related('assessment'))
         assessment_summary = {
-            'total_attempts': attempts.count(),
-            'domains_attempted': list(set(a.assessment.domain for a in attempts if a.assessment)),
-            'average_score': sum(a.score_percentage for a in attempts) / attempts.count() if attempts.count() > 0 else 0,
+            'total_attempts': len(attempt_list),
+            'domains_attempted': list(set(a.assessment.domain for a in attempt_list if a.assessment)),
+            'average_score': round(
+                sum(a.domain_score for a in attempt_list) / len(attempt_list), 1
+            ) if attempt_list else 0,
             'strongest_domain': student_profile.strongest_domain,
             'weakest_domain': student_profile.weakest_domain,
         }
         
         # Get current tasks
         from apps.tasks.models import TaskAssignment
-        current_tasks = TaskAssignment.objects.filter(
+        current_tasks_qs = TaskAssignment.objects.filter(
             student_id=student_id,
             status__in=['accepted', 'in_progress']
-        ).values(
-            'id', 'task__title', 'status', 'progress_percentage', 'created_at'
-        )
-        
+        ).select_related('task')
+        current_tasks = [
+            {
+                'id': ta.id,
+                'task_title': ta.task.title,
+                'status': ta.status,
+                'progress_percentage': ta.progress_percentage,
+                'created_at': ta.created_at.isoformat() if ta.created_at else None,
+            }
+            for ta in current_tasks_qs
+        ]
+
         # Get pending review tasks
-        pending_reviews = TaskAssignment.objects.filter(
+        pending_reviews_qs = TaskAssignment.objects.filter(
             student_id=student_id,
             mentor_review_requested=True,
             mentor_review_status='requested'
-        ).values(
-            'id', 'task__title', 'status', 'progress_percentage', 'completed_at'
-        )
+        ).select_related('task')
+        pending_review_tasks = [
+            {
+                'id': ta.id,
+                'task_title': ta.task.title,
+                'status': ta.status,
+                'progress_percentage': ta.progress_percentage,
+                'completed_at': ta.completed_at.isoformat() if ta.completed_at else None,
+            }
+            for ta in pending_reviews_qs
+        ]
         
         return Response({
             'success': True,
@@ -366,8 +385,8 @@ class MentorStudentDetailView(APIView):
                 'progress_score': student_profile.progress_score,
                 'completed_tasks_count': student_profile.completed_tasks_count,
                 'assessment_summary': assessment_summary,
-                'current_tasks': list(current_tasks),
-                'pending_review_tasks': list(pending_reviews),
+                'current_tasks': current_tasks,
+                'pending_review_tasks': pending_review_tasks,
             }
         })
 
@@ -381,21 +400,33 @@ class MentorPendingReviewsView(APIView):
 
     def get(self, request):
         from apps.tasks.models import TaskAssignment
-        
-        # Get all pending reviews for students assigned to this mentor
-        pending_reviews = TaskAssignment.objects.filter(
-            student__student_profile__mentor_assigned=request.user,
-            mentor_review_requested=True,
-            mentor_review_status='requested'
-        ).select_related('student', 'task').values(
-            'id', 'student__name', 'task__title', 'task__domain',
-            'status', 'progress_percentage', 'completed_at'
+
+        # Avoid deep ORM traversal — get student IDs directly
+        mentor_student_ids = list(
+            StudentProfile.objects.filter(mentor_assigned=request.user)
+            .values_list('user_id', flat=True)
         )
-        
-        return Response({
-            'success': True,
-            'data': list(pending_reviews)
-        })
+
+        pending_qs = TaskAssignment.objects.filter(
+            student_id__in=mentor_student_ids,
+            mentor_review_requested=True,
+            mentor_review_status='requested',
+        ).select_related('student', 'task')
+
+        result = [
+            {
+                'id': ta.id,
+                'student__name': ta.student.name,
+                'task__title': ta.task.title,
+                'task__domain': ta.task.domain,
+                'status': ta.status,
+                'progress_percentage': ta.progress_percentage,
+                'completed_at': ta.completed_at.isoformat() if ta.completed_at else None,
+            }
+            for ta in pending_qs
+        ]
+
+        return Response({'success': True, 'data': result})
 
 
 class MentorSubmitReviewView(APIView):
@@ -451,6 +482,135 @@ class MentorSubmitReviewView(APIView):
                 'mentor_feedback': assignment.mentor_feedback,
                 'mentor_review_status': assignment.mentor_review_status,
             }
+        })
+
+
+class MentorAvailableStudentsView(APIView):
+    """
+    GET /api/mentor/available-students/
+    Returns students not yet assigned to any mentor, optionally filtered by domain.
+    Mentor can use this to pick students to supervise.
+    """
+    permission_classes = [IsAuthenticated, IsMentor]
+
+    def get(self, request):
+        mentor_profile, _ = MentorProfile.objects.get_or_create(user=request.user)
+        domain_filter = request.query_params.get('domain', None)
+
+        # Students with no mentor assigned
+        qs = StudentProfile.objects.filter(mentor_assigned__isnull=True)
+
+        if domain_filter:
+            # Filter by strongest domain OR preferred domains containing this domain
+            qs = qs.filter(
+                models.Q(strongest_domain__iexact=domain_filter) |
+                models.Q(preferred_domains__icontains=domain_filter)
+            )
+
+        # Also include students in mentor's expertise domains if no filter given
+        if not domain_filter and mentor_profile.expertise_domains:
+            # Build Q for any expertise domain
+            q = models.Q()
+            for d in mentor_profile.expertise_domains:
+                q |= models.Q(strongest_domain__iexact=d)
+                q |= models.Q(preferred_domains__icontains=d)
+            qs = qs.filter(q)
+
+        result = []
+        for sp in qs.select_related('user')[:50]:
+            result.append({
+                'student_id': sp.user.id,
+                'student_name': sp.user.name,
+                'student_email': sp.user.email,
+                'strongest_domain': sp.strongest_domain,
+                'preferred_domains': sp.preferred_domains,
+                'progress_score': sp.progress_score,
+                'completed_tasks_count': sp.completed_tasks_count,
+                'cluster_label': sp.cluster_label,
+            })
+
+        return Response({'success': True, 'data': result})
+
+
+class MentorSelfAssignStudentView(APIView):
+    """
+    POST /api/mentor/assign-student/
+    Mentor assigns a student to themselves.
+    Body: { student_id: <int> }
+    """
+    permission_classes = [IsAuthenticated, IsMentor]
+
+    def post(self, request):
+        student_id = request.data.get('student_id')
+        if not student_id:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'student_id is required.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        mentor_profile, _ = MentorProfile.objects.get_or_create(user=request.user)
+
+        if mentor_profile.current_student_count >= mentor_profile.max_students:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'You have reached your maximum student capacity.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            student_profile = StudentProfile.objects.get(user_id=student_id)
+        except StudentProfile.DoesNotExist:
+            return Response(
+                {'success': False, 'error': {'code': 404, 'message': 'Student not found.'}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if student_profile.mentor_assigned is not None:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'Student already has an assigned mentor.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        student_profile.mentor_assigned = request.user
+        student_profile.save()
+        mentor_profile.current_student_count = StudentProfile.objects.filter(mentor_assigned=request.user).count()
+        mentor_profile.save()
+
+        return Response({
+            'success': True,
+            'message': f'{student_profile.user.name} has been assigned to you.',
+            'data': {'student_id': student_id, 'student_name': student_profile.user.name}
+        })
+
+
+class MentorUnassignStudentView(APIView):
+    """
+    POST /api/mentor/unassign-student/<student_id>/
+    Mentor removes a student from their list.
+    """
+    permission_classes = [IsAuthenticated, IsMentor]
+
+    def post(self, request, student_id):
+        try:
+            student_profile = StudentProfile.objects.get(
+                user_id=student_id,
+                mentor_assigned=request.user
+            )
+        except StudentProfile.DoesNotExist:
+            return Response(
+                {'success': False, 'error': {'code': 404, 'message': 'Student not found or not assigned to you.'}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        student_profile.mentor_assigned = None
+        student_profile.save()
+
+        mentor_profile, _ = MentorProfile.objects.get_or_create(user=request.user)
+        mentor_profile.current_student_count = StudentProfile.objects.filter(mentor_assigned=request.user).count()
+        mentor_profile.save()
+
+        return Response({
+            'success': True,
+            'message': 'Student unassigned successfully.',
         })
 
 

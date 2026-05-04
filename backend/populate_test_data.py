@@ -93,6 +93,16 @@ def populate_database():
         if created:
             print(f"  ✓ Created: {assessment.title}")
             
+            # Concept tags per domain (order → concept, weight)
+            DOMAIN_CONCEPTS = {
+                'Graphic Design':    [('colour theory', 1.2), ('typography', 1.0), ('composition', 1.2), ('design principles', 1.0), ('visual hierarchy', 1.0)],
+                'Programming':       [('data types', 1.0), ('functions', 1.0), ('loops', 1.2), ('data structures', 1.2), ('syntax', 0.8)],
+                'Digital Marketing': [('SEO', 1.2), ('social media', 1.0), ('audience targeting', 1.2), ('conversion', 1.0), ('platform strategy', 1.0)],
+                'Content Writing':   [('SEO', 1.2), ('copywriting', 1.0), ('content strategy', 1.0), ('conversion', 1.0), ('SEO', 1.0)],
+                'Data Analytics':    [('statistics', 1.2), ('SQL', 1.2), ('data visualization', 1.2), ('business intelligence', 1.0), ('databases', 1.0)],
+            }
+            concepts = DOMAIN_CONCEPTS.get(data['domain'], [('general', 1.0)] * 5)
+            
             # Create questions for this assessment
             questions_data = [
                 {
@@ -143,15 +153,29 @@ def populate_database():
             ]
             
             for q_data in questions_data:
+                concept, weight = concepts[q_data['order'] - 1]
                 Question.objects.get_or_create(
                     assessment=assessment,
                     order=q_data['order'],
-                    defaults=q_data
+                    defaults={**q_data, 'concept': concept, 'difficulty_weight': weight}
                 )
             
-            print(f"    └─ Added 5 questions")
+            print(f"    └─ Added 5 questions with concept tags")
         else:
-            print(f"  ✓ Already exists: {assessment.title}")
+            # Patch existing questions that have no concept tag
+            DOMAIN_CONCEPTS = {
+                'Graphic Design':    [('colour theory', 1.2), ('typography', 1.0), ('composition', 1.2), ('design principles', 1.0), ('visual hierarchy', 1.0)],
+                'Programming':       [('data types', 1.0), ('functions', 1.0), ('loops', 1.2), ('data structures', 1.2), ('syntax', 0.8)],
+                'Digital Marketing': [('SEO', 1.2), ('social media', 1.0), ('audience targeting', 1.2), ('conversion', 1.0), ('platform strategy', 1.0)],
+                'Content Writing':   [('SEO', 1.2), ('copywriting', 1.0), ('content strategy', 1.0), ('conversion', 1.0), ('SEO', 1.0)],
+                'Data Analytics':    [('statistics', 1.2), ('SQL', 1.2), ('data visualization', 1.2), ('business intelligence', 1.0), ('databases', 1.0)],
+            }
+            concepts = DOMAIN_CONCEPTS.get(data['domain'], [])
+            for order, (concept, weight) in enumerate(concepts, 1):
+                Question.objects.filter(
+                    assessment=assessment, order=order, concept=''
+                ).update(concept=concept, difficulty_weight=weight)
+            print(f"  ✓ Already exists: {assessment.title} — concept tags patched")
     
     # Create sample tasks
     print("\n📝 Creating Tasks...\n")

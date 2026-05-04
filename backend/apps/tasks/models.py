@@ -147,6 +147,10 @@ class TaskAssignment(models.Model):
         default='',
         help_text='Why this task was recommended to the student',
     )
+    recommendation_explanation = models.JSONField(
+        default=dict,
+        help_text='Structured per-component explanation of the recommendation score',
+    )
 
     # Mentor Review
     mentor_review_requested = models.BooleanField(default=False)

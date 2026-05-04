@@ -77,6 +77,18 @@ class Question(models.Model):
         choices=[('A', 'A'), ('B', 'B'), ('C', 'C'), ('D', 'D')],
     )
     order = models.IntegerField(default=0)
+    # Concept tag enables concept-wise scoring (e.g. "recursion", "colour theory")
+    concept = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        help_text='Concept or sub-topic this question tests (e.g. "loops", "typography")',
+    )
+    # Allows harder questions to carry more weight (default 1.0 = equal weight)
+    difficulty_weight = models.FloatField(
+        default=1.0,
+        help_text='Scoring weight relative to other questions in the same assessment',
+    )
 
     class Meta:
         db_table = 'questions'
@@ -149,6 +161,43 @@ class AssessmentAttempt(models.Model):
         default=list,
         blank=True,
         help_text='Actionable next steps based on performance',
+    )
+    # ── Rich evaluation fields ─────────────────────────────────────────────
+    # concept_scores: {concept: {correct: int, total: int, score_pct: float}}
+    concept_scores = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Per-concept score breakdown {concept: {correct, total, score_pct}}',
+    )
+    # domain_score: weighted score accounting for question difficulty_weight
+    domain_score = models.FloatField(
+        default=0.0,
+        help_text='Weighted domain score (0-100) using question difficulty weights',
+    )
+    # readiness_level: finer-grained than skill_level
+    # 'Novice' | 'Developing' | 'Competent' | 'Proficient' | 'Expert'
+    readiness_level = models.CharField(
+        max_length=15,
+        default='Novice',
+        help_text='5-tier readiness level derived from weighted domain score',
+    )
+    # skill_profile_vector: {concept: proficiency 0-1} for ML consumption
+    skill_profile_vector = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Normalised proficiency per concept {concept: 0.0-1.0}',
+    )
+    # improvement_delta vs previous attempt in same domain
+    improvement_delta = models.FloatField(
+        null=True,
+        blank=True,
+        help_text='Percentage-point change from previous attempt in this domain (null = first attempt)',
+    )
+    # recommended_next_task_type: 'practice' | 'project' | 'challenge'
+    recommended_task_type = models.CharField(
+        max_length=20,
+        default='practice',
+        help_text='Recommended task type based on readiness level',
     )
     attempted_at = models.DateTimeField(default=timezone.now)
 
