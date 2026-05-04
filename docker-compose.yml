@@ -1,0 +1,89 @@
+version: '3.9'
+
+services:
+
+  # ─── PostgreSQL Database ───────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: vihub_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-vihub_db}
+      POSTGRES_USER: ${DB_USER:-vihub_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vihub_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-vihub_user} -d ${DB_NAME:-vihub_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── Django Backend (Gunicorn) ─────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vihub_backend
+    restart: always
+    env_file:
+      - ./backend/.env
+    volumes:
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+      - ml_models:/app/ml_models
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - vihub_net
+    expose:
+      - "8000"
+
+  # ─── Nginx + React Frontend ────────────────────────────────────────────────
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    container_name: vihub_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Django admin static files (collected by backend)
+      - static_files:/app/staticfiles:ro
+      # Let's Encrypt SSL certificates
+      - ./nginx/certbot/conf:/etc/letsencrypt:ro
+      # Certbot ACME challenge webroot
+      - ./nginx/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+    networks:
+      - vihub_net
+
+  # ─── Certbot (SSL auto-renewal) ────────────────────────────────────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: vihub_certbot
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    # Renews certificates every 12 hours if due
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done'"
+    networks:
+      - vihub_net
+
+# ─── Named Volumes ─────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  static_files:
+  media_files:
+  ml_models:
+
+# ─── Network ───────────────────────────────────────────────────────────────
+networks:
+  vihub_net:
+    driver: bridge
