@@ -84,6 +84,12 @@ export const taskService = {
     `/tasks/evaluations/${evaluationId}/evaluate/`,
     data
   ),
+
+  // Mentor MCQ management
+  getMentorTaskMCQ: (taskId) => api.get(`/tasks/mentor-tasks/${taskId}/mcq/`),
+  createMentorTaskMCQ: (taskId, data) => api.post(`/tasks/mentor-tasks/${taskId}/mcq/`, data),
+  updateMentorTaskMCQ: (taskId, questionId, data) => api.put(`/tasks/mentor-tasks/${taskId}/mcq/${questionId}/`, data),
+  deleteMentorTaskMCQ: (taskId, questionId) => api.delete(`/tasks/mentor-tasks/${taskId}/mcq/${questionId}/`),
 };
 
 export const mentorService = {

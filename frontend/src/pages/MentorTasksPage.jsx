@@ -196,6 +196,13 @@ export default function MentorTasksPage() {
                   </span>
                   <div className="flex gap-2">
                     <button
+                      onClick={() => navigate(`/mentor/tasks/${task.id}/quiz`)}
+                      className="px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition"
+                      title="Manage quiz questions"
+                    >
+                      📝 Quiz
+                    </button>
+                    <button
                       onClick={() => navigate(`/mentor/tasks/${task.id}/edit`)}
                       className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition"
                     >

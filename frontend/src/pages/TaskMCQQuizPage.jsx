@@ -152,6 +152,27 @@ export default function TaskMCQQuizPage() {
     );
   }
 
+  if (!loading && questions.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto py-20 text-center">
+          <p className="text-5xl mb-4">📋</p>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">No Quiz Available</h2>
+          <p className="text-gray-500 mb-6">
+            Your mentor hasn't added quiz questions for this task yet. 
+            You can continue — your task completion has been recorded.
+          </p>
+          <button
+            onClick={() => navigate('/student/tasks/my-tasks')}
+            className="inline-block bg-gray-900 hover:bg-gray-700 text-white font-medium px-6 py-2.5 rounded-lg transition-colors text-sm"
+          >
+            Back to My Tasks
+          </button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto pb-8">

@@ -19,6 +19,7 @@ from .serializers import (
     TaskAssignmentAcceptSerializer,
     RecommendedTaskSerializer,
     TaskMCQSerializer,
+    TaskMCQCreateSerializer,
     TaskCompletionSerializer,
     TaskCompletionCreateSerializer,
     TaskMCQAttemptSerializer,
@@ -129,6 +130,72 @@ class MentorTaskManageView(APIView):
         task_title = task.title
         task.delete()
         return Response({'success': True, 'message': f'Task "{task_title}" deleted.'})
+
+
+class MentorTaskMCQView(APIView):
+    """
+    GET  /tasks/mentor-tasks/<task_id>/mcq/  — list all MCQ questions for a task (with answers)
+    POST /tasks/mentor-tasks/<task_id>/mcq/  — add a new question
+    Mentor must own the task.
+    """
+    permission_classes = [IsAuthenticated, IsMentor]
+
+    def _get_own_task(self, task_id, user):
+        try:
+            return Task.objects.get(pk=task_id, created_by=user)
+        except Task.DoesNotExist:
+            return None
+
+    def get(self, request, task_id):
+        task = self._get_own_task(task_id, request.user)
+        if not task:
+            return Response({'success': False, 'error': 'Task not found or not yours.'}, status=status.HTTP_404_NOT_FOUND)
+        questions = TaskMCQ.objects.filter(task=task).order_by('order')
+        serializer = TaskMCQCreateSerializer(questions, many=True)
+        return Response({'success': True, 'data': {'task_id': task.id, 'task_title': task.title, 'questions': serializer.data}})
+
+    def post(self, request, task_id):
+        task = self._get_own_task(task_id, request.user)
+        if not task:
+            return Response({'success': False, 'error': 'Task not found or not yours.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = TaskMCQCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        question = serializer.save(task=task)
+        return Response({'success': True, 'data': TaskMCQCreateSerializer(question).data}, status=status.HTTP_201_CREATED)
+
+
+class MentorTaskMCQDetailView(APIView):
+    """
+    PUT    /tasks/mentor-tasks/<task_id>/mcq/<question_id>/  — update a question
+    DELETE /tasks/mentor-tasks/<task_id>/mcq/<question_id>/  — delete a question
+    Mentor must own the task.
+    """
+    permission_classes = [IsAuthenticated, IsMentor]
+
+    def _get_question(self, task_id, question_id, user):
+        try:
+            task = Task.objects.get(pk=task_id, created_by=user)
+            return TaskMCQ.objects.get(pk=question_id, task=task)
+        except (Task.DoesNotExist, TaskMCQ.DoesNotExist):
+            return None
+
+    def put(self, request, task_id, question_id):
+        question = self._get_question(task_id, question_id, request.user)
+        if not question:
+            return Response({'success': False, 'error': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = TaskMCQCreateSerializer(question, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        question = serializer.save()
+        return Response({'success': True, 'data': TaskMCQCreateSerializer(question).data})
+
+    def delete(self, request, task_id, question_id):
+        question = self._get_question(task_id, question_id, request.user)
+        if not question:
+            return Response({'success': False, 'error': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
+        question.delete()
+        return Response({'success': True})
 
 
 class RecommendedTasksView(APIView):

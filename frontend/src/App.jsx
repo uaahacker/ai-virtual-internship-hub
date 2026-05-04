@@ -46,6 +46,7 @@ import MentorSelectStudentsPage from './pages/MentorSelectStudentsPage';
 import MentorChatPage from './pages/MentorChatPage';
 import MentorTasksPage from './pages/MentorTasksPage';
 import MentorCreateTaskPage from './pages/MentorCreateTaskPage';
+import MentorTaskMCQPage from './pages/MentorTaskMCQPage';
 
 // New feature pages
 import AnnouncementsPage from './pages/AnnouncementsPage';
@@ -115,6 +116,7 @@ function App() {
       <Route path="/mentor/tasks" element={<ProtectedRoute role="Mentor"><MentorTasksPage /></ProtectedRoute>} />
       <Route path="/mentor/tasks/create" element={<ProtectedRoute role="Mentor"><MentorCreateTaskPage /></ProtectedRoute>} />
       <Route path="/mentor/tasks/:taskId/edit" element={<ProtectedRoute role="Mentor"><MentorCreateTaskPage /></ProtectedRoute>} />
+      <Route path="/mentor/tasks/:taskId/quiz" element={<ProtectedRoute role="Mentor"><MentorTaskMCQPage /></ProtectedRoute>} />
       <Route path="/mentor/settings" element={<ProtectedRoute role="Mentor"><MentorSettingsPage /></ProtectedRoute>} />
       <Route path="/mentor/announcements" element={<ProtectedRoute role="Mentor"><AnnouncementsPage /></ProtectedRoute>} />
       <Route path="/mentor/students/:studentId/chat" element={<ProtectedRoute role="Mentor"><DirectChatPage /></ProtectedRoute>} />

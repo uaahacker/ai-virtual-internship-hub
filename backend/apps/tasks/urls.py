@@ -9,6 +9,8 @@ from .views import (
     TaskCreateView,
     MentorTaskListView,
     MentorTaskManageView,
+    MentorTaskMCQView,
+    MentorTaskMCQDetailView,
     RecommendedTasksView,
     MyTasksView,
     AcceptTaskView,
@@ -48,6 +50,8 @@ urlpatterns = [
     path('create/', TaskCreateView.as_view(), name='task-create'),
     path('mentor-tasks/', MentorTaskListView.as_view(), name='mentor-task-list'),
     path('mentor-tasks/<int:pk>/', MentorTaskManageView.as_view(), name='mentor-task-manage'),
+    path('mentor-tasks/<int:task_id>/mcq/', MentorTaskMCQView.as_view(), name='mentor-task-mcq'),
+    path('mentor-tasks/<int:task_id>/mcq/<int:question_id>/', MentorTaskMCQDetailView.as_view(), name='mentor-task-mcq-detail'),
 
     path('assignments/<int:assignment_id>/', TaskAssignmentDetailView.as_view(), name='assignment-detail'),
     path('assignments/<int:assignment_id>/accept/', AcceptTaskView.as_view(), name='accept-task'),

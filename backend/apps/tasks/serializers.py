@@ -163,6 +163,19 @@ class TaskMCQWithAnswerSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class TaskMCQCreateSerializer(serializers.ModelSerializer):
+    """Serializer for mentors to create / update MCQ questions (includes correct_answer)."""
+
+    class Meta:
+        model = TaskMCQ
+        fields = [
+            'id', 'question_text', 'difficulty',
+            'option_a', 'option_b', 'option_c', 'option_d',
+            'correct_answer', 'explanation', 'order',
+        ]
+        read_only_fields = ['id']
+
+
 class TaskCompletionSerializer(serializers.ModelSerializer):
     """Serializer for TaskCompletion."""
     task_title = serializers.CharField(
