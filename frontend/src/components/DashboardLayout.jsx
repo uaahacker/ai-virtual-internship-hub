@@ -181,6 +181,7 @@ function getNavItems(role) {
         { path: '/mentor/dashboard', label: 'Dashboard', icon: '📊' },
         { path: '/mentor/students', label: 'My Students', icon: '👥' },
         { path: '/mentor/select-students', label: 'Select Students', icon: '➕' },
+        { path: '/mentor/tasks', label: 'My Tasks', icon: '📝' },
         { path: '/mentor/reviews', label: 'Reviews', icon: '📋' },
         { path: '/mentor/analytics', label: 'Analytics', icon: '📈' },
         { path: '/mentor/chat', label: 'AI Assistant', icon: '💬' },

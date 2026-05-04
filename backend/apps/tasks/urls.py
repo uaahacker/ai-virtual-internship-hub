@@ -7,6 +7,8 @@ from .views import (
     TaskListView,
     TaskDetailView,
     TaskCreateView,
+    MentorTaskListView,
+    MentorTaskManageView,
     RecommendedTasksView,
     MyTasksView,
     AcceptTaskView,
@@ -44,6 +46,8 @@ urlpatterns = [
     path('my-tasks/', MyTasksView.as_view(), name='my-tasks'),
 
     path('create/', TaskCreateView.as_view(), name='task-create'),
+    path('mentor-tasks/', MentorTaskListView.as_view(), name='mentor-task-list'),
+    path('mentor-tasks/<int:pk>/', MentorTaskManageView.as_view(), name='mentor-task-manage'),
 
     path('assignments/<int:assignment_id>/', TaskAssignmentDetailView.as_view(), name='assignment-detail'),
     path('assignments/<int:assignment_id>/accept/', AcceptTaskView.as_view(), name='accept-task'),

@@ -38,6 +38,12 @@ export const taskService = {
   detail: (id) => api.get(`/tasks/${id}/`),
   create: (data) => api.post('/tasks/create/', data),
 
+  // Mentor task management (own tasks only)
+  getMentorTasks: () => api.get('/tasks/mentor-tasks/'),
+  getMentorTaskDetail: (id) => api.get(`/tasks/mentor-tasks/${id}/`),
+  updateTask: (id, data) => api.put(`/tasks/mentor-tasks/${id}/`, data),
+  deleteTask: (id) => api.delete(`/tasks/mentor-tasks/${id}/`),
+
   // Recommendations
   getRecommendations: () => api.get('/tasks/recommended/'),
   getRecommendationExplanation: (assignmentId) => api.get(

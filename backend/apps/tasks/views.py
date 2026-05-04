@@ -74,6 +74,63 @@ class TaskCreateView(APIView):
         return Response({'success': True, 'data': TaskSerializer(task).data}, status=status.HTTP_201_CREATED)
 
 
+class MentorTaskListView(APIView):
+    """GET /tasks/mentor-tasks/ — list tasks created by the logged-in mentor."""
+    permission_classes = [IsAuthenticated, IsMentor]
+
+    def get(self, request):
+        tasks = Task.objects.filter(created_by=request.user).order_by('-created_at')
+        serializer = TaskSerializer(tasks, many=True)
+        return Response({'success': True, 'data': serializer.data})
+
+
+class MentorTaskManageView(APIView):
+    """
+    PUT  /tasks/mentor-tasks/<pk>/  — update own task
+    DELETE /tasks/mentor-tasks/<pk>/ — delete own task
+    """
+    permission_classes = [IsAuthenticated, IsMentor]
+
+    def _get_own_task(self, pk, user):
+        try:
+            return Task.objects.get(pk=pk, created_by=user)
+        except Task.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        task = self._get_own_task(pk, request.user)
+        if not task:
+            return Response(
+                {'success': False, 'error': 'Task not found or not yours.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response({'success': True, 'data': TaskSerializer(task).data})
+
+    def put(self, request, pk):
+        task = self._get_own_task(pk, request.user)
+        if not task:
+            return Response(
+                {'success': False, 'error': 'Task not found or not yours.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = TaskCreateSerializer(task, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        task = serializer.save()
+        return Response({'success': True, 'data': TaskSerializer(task).data})
+
+    def delete(self, request, pk):
+        task = self._get_own_task(pk, request.user)
+        if not task:
+            return Response(
+                {'success': False, 'error': 'Task not found or not yours.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        task_title = task.title
+        task.delete()
+        return Response({'success': True, 'message': f'Task "{task_title}" deleted.'})
+
+
 class RecommendedTasksView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
