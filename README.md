@@ -1,168 +1,132 @@
 # AI-Supported Virtual Internship Hub
 
-A web-based platform that helps students build freelancing careers through AI-powered skill assessments, personalized domain recommendations, and structured virtual internship tasks.
-
-**Current Version: Prototype (FR1 + FR2)**
+> **An AI-powered platform that gives students real-world freelancing experience through simulated projects, ML-driven task recommendations, automated evaluations, mentor guidance, and auto-generated portfolios.**
 
 ---
 
-## Tech Stack
+## Table of Contents
 
-| Layer      | Technology                      |
-|------------|---------------------------------|
-| Backend    | Django 4.2 + Django REST Framework |
-| Database   | MongoDB (via Djongo)            |
-| Auth       | JWT (SimpleJWT)                 |
-| Frontend   | React 18 (Vite) + Tailwind CSS |
-| State Mgmt | React Context API               |
-
----
-
-## Features Implemented (Prototype)
-
-### FR1: User Registration & Authentication
-- Role-based registration (Student / Mentor)
-- Admin creation via management command
-- JWT-based login & logout
-- Password validation (min 8 chars + Django validators)
-- Role-based access control (Student, Mentor, Admin)
-- Protected routes & dashboards per role
-
-### FR2: Skill Assessment + Recommendations
-- Browse domain-specific MCQ assessments
-- Take assessments with interactive UI
-- Automatic score calculation
-- Skill level classification (Beginner / Intermediate / Advanced)
-- Personalized freelancing domain recommendations
-- Assessment history on student dashboard
+1. [Project Overview](#project-overview)
+2. [Architecture Diagram](#architecture-diagram)
+3. [Technology Stack](#technology-stack)
+4. [Features Implemented](#features-implemented)
+5. [Project Structure](#project-structure)
+6. [Getting Started](#getting-started)
+7. [Backend — Django REST API](#backend--django-rest-api)
+8. [Frontend — React/Vite SPA](#frontend--reactvite-spa)
+9. [AI & ML Capabilities](#ai--ml-capabilities)
+10. [Key Workflows](#key-workflows)
+11. [API Overview](#api-overview)
+12. [User Roles](#user-roles)
+13. [Database Schema](#database-schema)
+14. [Environment Variables](#environment-variables)
+15. [Running Tests & Management Commands](#running-tests--management-commands)
 
 ---
 
-## Prerequisites
+## Project Overview
 
-- **Python 3.10+**
-- **Node.js 18+ & npm**
-- **MongoDB** running locally on `mongodb://localhost:27017`
-  - Install MongoDB Community Edition: https://www.mongodb.com/try/download/community
-  - Or use MongoDB Atlas (update `MONGO_HOST` in `.env`)
+This platform addresses the gap between academic learning and real-world freelancing practice. Students register, take AI-evaluated skill assessments, receive ML-recommended tasks, complete them with reflective submissions and an MCQ quiz, then receive a combined mentor + AI evaluation. Each completed task automatically builds the student's portfolio — ready to showcase on platforms like Upwork or Fiverr.
+
+**Functional Requirements Delivered**
+
+| # | Requirement | Status |
+|---|-------------|--------|
+| FR1 | User registration & authentication (Student / Mentor / Admin) | ✅ Done |
+| FR2 | AI-based skill assessment for domain recommendation | ✅ Done |
+| FR3 | ML task/project allocation using hybrid recommendation | ✅ Done |
+| FR4 | Automated task evaluation (MCQ scoring + NLP feedback) | ✅ Done |
+| FR5 | Mentor dashboard — review progress, give scored feedback | ✅ Done |
+| FR6 | Auto-generated portfolio from completed tasks | ✅ Done |
+| FR7 | AI-powered chatbot for career guidance | ✅ Done |
+| FR8 | Admin panel — manage users, assessments, tasks, analytics | ✅ Done |
+| FR9 | Analytics dashboards — progress, skill trends, cluster insights | ✅ Done |
 
 ---
 
-## Quick Start
+## Architecture Diagram
 
-### 1. Clone & Setup Backend
-
-```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-# source venv/bin/activate
-
-# Install dependencies (order matters for djongo compatibility)
-pip install Django==4.2.11 djangorestframework djangorestframework-simplejwt pymongo==3.13.0 django-cors-headers python-dotenv pytz sqlparse==0.2.4
-pip install djongo==1.3.6 --no-deps
-
-# Copy environment file
-copy .env.example .env     # Windows
-# cp .env.example .env     # macOS/Linux
-
-# Run migrations
-python manage.py makemigrations
-python manage.py migrate
-
-# Create admin user
-python manage.py create_admin
-
-# Seed assessment data (5 assessments, 10-12 MCQs each)
-python manage.py seed_assessments
-
-# Start backend server
-python manage.py runserver
+```
+┌─────────────────────────────────────────────────────────┐
+│                    React / Vite Frontend                │
+│  (Tailwind CSS · React Router v6 · Axios · Toastify)   │
+│                                                         │
+│  Student ──▶ Assessment ──▶ Tasks ──▶ Portfolio         │
+│  Mentor  ──▶ Review ──▶ Evaluate ──▶ Analytics          │
+│  Admin   ──▶ Users ──▶ Assessments ──▶ Reports          │
+└──────────────────────┬──────────────────────────────────┘
+                       │  HTTP/REST  (JWT Auth)
+┌──────────────────────▼──────────────────────────────────┐
+│                Django REST Framework API                │
+│                   (Python 3 · Django 4.2)               │
+│                                                         │
+│  /api/auth/         accounts app                        │
+│  /api/assessments/  assessments app                     │
+│  /api/tasks/        tasks app  ← ML Engine here         │
+│  /api/chatbot/      chatbot app                         │
+│  /api/notifications/ notifications app                  │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+          ┌────────────┴────────────┐
+          ▼                         ▼
+   PostgreSQL DB            ML Models (.pkl)
+   (20+ tables)       domain_predictor.pkl
+                      KMeans clustering
+                      KNN collaborative filter
 ```
 
-Backend runs at: `http://localhost:8000`
+---
 
-### 2. Setup Frontend
+## Technology Stack
 
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Copy environment file
-copy .env.example .env     # Windows
-# cp .env.example .env     # macOS/Linux
-
-# Start dev server
-npm run dev
-```
-
-Frontend runs at: `http://localhost:5173`
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18, Vite 5, Tailwind CSS 3, React Router v6 |
+| **HTTP Client** | Axios 1.6 |
+| **UI / UX** | React Icons, React Toastify, React Markdown |
+| **Backend** | Django 4.2, Django REST Framework 3.14 |
+| **Authentication** | JWT (djangorestframework-simplejwt) |
+| **Database** | PostgreSQL |
+| **ML / AI** | scikit-learn (KMeans, KNN, RandomForest), NumPy, Pandas |
+| **NLP** | NLTK (WordNet, tokenizers) |
+| **Dev Environment** | VS Code, Vite dev server, Django dev server |
+| **Version Control** | Git / GitHub |
 
 ---
 
-## Default Accounts
+## Features Implemented
 
-| Role    | Email           | Password   |
-|---------|-----------------|------------|
-| Admin   | admin@hub.com   | Admin@123  |
-| Student | (register new)  | (your pwd) |
-| Mentor  | (register new)  | (your pwd) |
+### Student Experience
+- Register, take AI-graded domain skill assessments (10 domains)
+- Receive 5-tier readiness score (Novice → Expert) with NLP feedback
+- View ML-recommended tasks ranked by hybrid AI score
+- Accept tasks, track progress, submit with reflective writing
+- Take per-task MCQ quiz — auto-scored
+- View combined mentor + MCQ evaluation result
+- Auto-generated portfolio with score, skills, and mentor feedback
+- AI chatbot for freelancing career guidance
+- View personal analytics (domain breakdown, skill trends, cluster tier)
+- Direct messaging with mentor
 
----
+### Mentor Experience
+- View assigned students with cluster labels and progress scores
+- See pending task reviews with student reflection + MCQ score
+- Submit scored evaluations (mentor score 0–100, feedback, strengths, suggestions)
+- Final score = average(MCQ score, mentor score) → auto-updates portfolio
+- View review history with final scores
+- Analytics dashboard — cluster distribution, AI insights, domain breakdown
+- Create / manage custom tasks with MCQ questions
+- Select and assign/unassign students
+- AI assistant chat
 
-## API Endpoints
-
-### Authentication
-| Method | Endpoint                 | Auth     | Description              |
-|--------|--------------------------|----------|--------------------------|
-| POST   | `/api/auth/register`     | Public   | Register Student/Mentor  |
-| POST   | `/api/auth/login`        | Public   | Login, returns JWT       |
-| POST   | `/api/auth/logout`       | Bearer   | Logout (blacklist token) |
-| GET    | `/api/auth/me`           | Bearer   | Get current user profile |
-| GET    | `/api/auth/admin/users`  | Admin    | List all users           |
-
-### Assessments
-| Method | Endpoint                           | Auth    | Description              |
-|--------|------------------------------------|---------|--------------------------|
-| GET    | `/api/assessments/`                | Student | List active assessments  |
-| GET    | `/api/assessments/<id>/`           | Student | Assessment with questions |
-| POST   | `/api/assessments/<id>/submit`     | Student | Submit & get results     |
-| GET    | `/api/assessments/attempts/<id>/`  | Student | View past attempt result |
-| GET    | `/api/assessments/my-attempts/`    | Student | List all past attempts   |
-
----
-
-## Frontend Routes
-
-| Path                          | Role      | Page                     |
-|-------------------------------|-----------|--------------------------|
-| `/login`                      | Public    | Login                    |
-| `/register`                   | Public    | Registration             |
-| `/student/dashboard`          | Student   | Student Dashboard        |
-| `/student/assessments`        | Student   | Assessment List          |
-| `/student/assessments/:id`    | Student   | Take Assessment          |
-| `/student/results/:attemptId` | Student   | View Result              |
-| `/mentor/dashboard`           | Mentor    | Mentor Dashboard         |
-| `/admin/dashboard`            | Admin     | Admin Dashboard          |
-
----
-
-## Security Notes
-
-- **JWT tokens are stored in `localStorage`** for simplicity in this prototype. In production, consider:
-  - HttpOnly cookies for refresh tokens
-  - In-memory storage for access tokens
-  - CSRF protection with cookie-based auth
-- Passwords are hashed using Django's default PBKDF2 algorithm.
-- CORS is configured to allow only the React dev server origin.
+### Admin Experience
+- Live stats dashboard (user counts, task/assessment statistics)
+- Manage all users (create, edit, delete, reset password)
+- Manage assessments (create, add/remove questions, toggle active)
+- Manage tasks (view all, toggle active/inactive)
+- Analytics — system-wide: mentor workload, cluster overview, popular domains
+- Announcements (broadcast to all, students, or mentors)
+- Auto-assign mentors to students
 
 ---
 
@@ -170,55 +134,390 @@ Frontend runs at: `http://localhost:5173`
 
 ```
 fyp/
+├── README.md                       ← This file
 ├── backend/
-│   ├── config/              # Django project settings
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   └── wsgi.py
-│   ├── apps/
-│   │   ├── core/            # Shared utilities (permissions, exceptions)
-│   │   ├── accounts/        # FR1: User model, auth views
-│   │   ├── assessments/     # FR2: Assessment models, views, recommendations
-│   │   ├── tasks/           # Stub (future)
-│   │   ├── submissions/     # Stub (future)
-│   │   ├── portfolios/      # Stub (future)
-│   │   └── notifications/   # Stub (future)
+│   ├── README.md                   ← Backend overview
 │   ├── manage.py
 │   ├── requirements.txt
-│   └── .env.example
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # Reusable components
-│   │   ├── contexts/        # React Context (Auth)
-│   │   ├── pages/           # Page components
-│   │   ├── services/        # API service layer
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── package.json
-│   ├── vite.config.js
-│   └── .env.example
-├── README.md
-└── PROJECT_SPEC_FOR_CLAUDE.md
+│   ├── config/
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   ├── wsgi.py
+│   │   └── asgi.py
+│   ├── apps/
+│   │   ├── accounts/               ← Auth, users, mentor/student profiles
+│   │   │   └── README.md
+│   │   ├── assessments/            ← Skill assessments, evaluation engine, NLP
+│   │   │   └── README.md
+│   │   ├── tasks/                  ← Tasks, assignments, ML recommendation, portfolio service
+│   │   │   └── README.md
+│   │   ├── chatbot/                ← AI career guidance chatbot
+│   │   │   └── README.md
+│   │   ├── notifications/          ← Notifications, announcements, direct messages
+│   │   │   └── README.md
+│   │   ├── portfolios/             ← Student portfolio models
+│   │   │   └── README.md
+│   │   ├── core/                   ← Shared permissions & exception handler
+│   │   │   └── README.md
+│   │   └── submissions/            ← (stub, future expansion)
+│   └── ml_models/
+│       └── domain_predictor.pkl    ← Trained RandomForest model
+└── frontend/
+    ├── README.md                   ← Frontend overview
+    ├── package.json
+    ├── vite.config.js
+    ├── tailwind.config.js
+    ├── src/
+    │   ├── App.jsx                 ← All routes (50+)
+    │   ├── main.jsx
+    │   ├── index.css
+    │   ├── services/
+    │   │   ├── api.js              ← Axios instance + JWT interceptor
+    │   │   └── endpoints.js        ← All API service functions
+    │   ├── contexts/
+    │   │   ├── AuthContext.jsx
+    │   │   ├── ChatContext.jsx
+    │   │   └── NotificationContext.jsx
+    │   ├── components/             ← 13 reusable components
+    │   └── pages/                  ← 39 page components
+    └── public/
 ```
 
 ---
 
-## Future Modules (Stubs Created)
+## Getting Started
 
-- **Tasks**: Task creation, assignment, student task management
-- **Submissions**: File upload, submission tracking
-- **AI Evaluation**: Automated scoring with AI
-- **Mentor Evaluation**: Manual feedback from mentors
-- **Portfolios**: Student work showcase + external profiles
-- **Notifications**: Real-time notification system
+### Prerequisites
+
+- Python 3.10+
+- Node.js 18+
+- PostgreSQL 14+
+
+### 1 — Clone the Repository
+
+```bash
+git clone https://github.com/uaahacker/fyp.git
+cd fyp
+```
+
+### 2 — Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Linux/Mac
+
+pip install -r requirements.txt
+
+# Download NLTK data (one-time)
+python -c "import nltk; nltk.download('wordnet'); nltk.download('punkt')"
+```
+
+Create a `.env` file in `backend/`:
+
+```env
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+DB_NAME=virtual_internship_hub
+DB_USER=postgres
+DB_PASSWORD=yourpassword
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+```bash
+# Create the PostgreSQL database
+psql -U postgres -c "CREATE DATABASE virtual_internship_hub;"
+
+# Run migrations
+python manage.py migrate
+
+# Create admin user
+python manage.py create_admin
+
+# (Optional) Seed assessment questions
+python manage.py seed_assessments
+
+# (Optional) Train ML domain prediction model
+python manage.py train_domain_model
+
+# Start server
+python manage.py runserver
+```
+
+Backend runs at **http://localhost:8000**
+
+### 3 — Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs at **http://localhost:5173**
+
+---
+
+## Backend — Django REST API
+
+Full details → [backend/README.md](backend/README.md)
+
+The backend is a Django 4.2 REST API organized into 7 apps:
+
+| App | URL Prefix | Purpose |
+|-----|-----------|---------|
+| `accounts` | `/api/auth/` | Authentication, user management, mentor/student profiles |
+| `assessments` | `/api/assessments/` | Skill assessments with AI evaluation |
+| `tasks` | `/api/tasks/` | Tasks, assignments, ML recommendations, portfolio |
+| `chatbot` | `/api/chatbot/` | AI career chatbot sessions |
+| `notifications` | `/api/notifications/` | Notifications, announcements, messages |
+| `portfolios` | *(via tasks)* | Portfolio models (managed via tasks app) |
+| `core` | *(shared)* | Permissions, exception handling |
+
+**Auth**: JWT (60-min access tokens, 7-day refresh with rotation). All endpoints require `Authorization: Bearer <token>` except register and login.
+
+**Response format** (all endpoints):
+```json
+{ "success": true, "data": { ... } }
+{ "success": false, "error": { "code": 400, "message": "..." } }
+```
+
+---
+
+## Frontend — React/Vite SPA
+
+Full details → [frontend/README.md](frontend/README.md)
+
+The frontend is a React 18 single-page application with Vite as the build tool and Tailwind CSS for styling.
+
+**50+ routes** organized by role with `ProtectedRoute` guards.  
+**Auth state** managed via `AuthContext` (JWT stored in localStorage, 5-sec timeout on initial load).  
+**Notifications** polled every 30 seconds via `NotificationContext`.
+
+---
+
+## AI & ML Capabilities
+
+### 1. Assessment Evaluation Engine
+`backend/apps/assessments/evaluation_engine.py`
+
+Multi-dimensional MCQ evaluation — no external APIs.
+
+- **Input**: Student answers + question metadata (concept, difficulty_weight)
+- **Output**:
+  - `domain_score` (0–100)
+  - `concept_scores` dict per concept
+  - `readiness_level`: Novice / Developing / Competent / Proficient / Expert
+  - `skill_profile_vector` (0–1 per concept)
+  - `improvement_delta` vs previous attempt
+  - `recommended_task_type` (Design / Development / Content / etc.)
+  - NLP-generated personalized feedback
+
+### 2. NLP Feedback Generator
+`backend/apps/assessments/nlp_feedback.py`
+
+- NLTK WordNet synonym variation for natural-sounding text
+- Template sentences per skill tier + score range
+- Graceful fallback when NLTK is unavailable
+
+### 3. Hybrid Task Recommendation
+`backend/apps/tasks/ml_engine.py` + `recommendation_service.py`
+
+```
+Final Score = 0.6 × content_score + 0.4 × collaborative_score
+```
+
+- **Content-Based (60%)**: 30-dim feature vectors; cosine similarity between student profile and task features
+- **Collaborative Filtering (40%)**: User-based KNN (K=5) on student × task MCQ score matrix
+- Fallback to domain-match heuristic when insufficient interaction data
+
+### 4. Student Clustering (KMeans)
+`backend/apps/tasks/ml_engine.py` — `StudentClusterer`
+
+- 4 clusters: **Explorer → Developing → Competent → Expert**
+- Input: 10-dim domain performance vector (one score per domain)
+- Updated automatically after each assessment attempt
+- Displayed with cluster badge on analytics + mentor dashboards
+
+### 5. Domain Predictor (RandomForest)
+`backend/apps/tasks/domain_predictor.py`
+
+- 13-feature input vector:
+  - `[0:10]` Latest MCQ score per domain
+  - `[10]` Task completion rate
+  - `[11]` Improvement trend (normalized slope)
+  - `[12]` Average task MCQ score
+- Trained via `python manage.py train_domain_model`
+- Serialized to `backend/ml_models/domain_predictor.pkl`
+
+### 6. Collaborative Filtering
+`backend/apps/tasks/collaborative_filtering.py`
+
+- User-based KNN on student × task interaction matrix
+- Recommends tasks completed by similar students
+
+---
+
+## Key Workflows
+
+### Assessment → Recommendation
+
+```
+Student takes MCQ assessment
+        ↓
+Evaluation engine calculates domain_score, readiness_level, concept_scores
+        ↓
+StudentProfile updated (strongest_domain, skill_scores, cluster label)
+        ↓
+Hybrid recommendation engine selects top-10 tasks
+        ↓
+Tasks shown with AI score, match reason, and domain badge
+```
+
+### Task Completion → Portfolio
+
+```
+Student accepts task → TaskAssignment (status: accepted)
+        ↓
+Student works on task → updates progress %
+        ↓
+Student submits → TaskCompletion (reflective text)
+        ↓
+Student completes MCQ → TaskMCQAttempt scored
+        ↓
+TaskEvaluation created (status: pending, mcq_score set)
+        ↓
+Mentor evaluates → mentor_score, feedback, strengths, suggestions
+        ↓
+final_score = avg(mcq_score, mentor_score)
+        ↓
+PortfolioItem auto-created / updated
+        ↓
+Portfolio stats recalculated
+```
+
+---
+
+## API Overview
+
+All endpoints are prefixed with `/api/`.
+
+| Group | Key Endpoints |
+|-------|--------------|
+| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` |
+| Assessments | `GET /assessments/`, `POST /assessments/:id/submit`, `GET /assessments/my-attempts/` |
+| Tasks | `GET /tasks/recommended/`, `GET /tasks/my-tasks/`, `PUT /tasks/assignments/:id/update/` |
+| Completion | `POST /tasks/assignments/:id/complete/`, `POST /tasks/completions/:id/submit-mcq/` |
+| Evaluation | `POST /tasks/evaluations/:id/evaluate/` |
+| Portfolio | `GET /tasks/portfolios/me/`, `GET /tasks/portfolios/:id/stats/` |
+| Analytics | `GET /tasks/analytics/student/`, `GET /tasks/analytics/mentor/`, `GET /tasks/analytics/admin/` |
+| Chatbot | `POST /chatbot/sessions/:id/messages/` |
+| Notifications | `GET /notifications/`, `POST /notifications/read-all/` |
+| Admin | `GET /auth/admin/stats/`, `GET /auth/admin/users`, `POST /auth/mentor/auto-assign/` |
+
+---
+
+## User Roles
+
+| Role | Access Level | Key Capabilities |
+|------|-------------|-----------------|
+| **Student** | Standard | Assessments, tasks, portfolio, chat, analytics |
+| **Mentor** | Elevated | Reviews, evaluations, student management, task creation |
+| **Admin** | Full | User management, system analytics, announcements |
+
+Route guards implemented via `ProtectedRoute` component checking `user.role`.
+
+---
+
+## Database Schema
+
+Key tables in PostgreSQL:
+
+| Table | Model | Description |
+|-------|-------|-------------|
+| `users` | User | All users (Student/Mentor/Admin) |
+| `accounts_studentprofile` | StudentProfile | Skills, clusters, progress, mentor link |
+| `accounts_mentorprofile` | MentorProfile | Expertise, stats, availability |
+| `assessments_assessment` | Assessment | MCQ assessments per domain |
+| `assessments_question` | Question | Assessment questions with concept weights |
+| `assessments_assessmentattempt` | AssessmentAttempt | Attempt results, skill vectors |
+| `tasks_task` | Task | Tasks with domain, difficulty, skills |
+| `task_assignments` | TaskAssignment | Student–task link with progress |
+| `task_completions` | TaskCompletion | Submission + reflective text |
+| `task_mcq_attempts` | TaskMCQAttempt | MCQ answers + auto-score |
+| `task_evaluations` | TaskEvaluation | Mentor score + final score |
+| `portfolio_items` | PortfolioItem | Auto-generated portfolio entries |
+| `chatbot_chatsession` | ChatSession | Chat sessions per user |
+| `chatbot_chatmessage` | ChatMessage | Chat messages |
+| `notifications_notification` | Notification | In-app notifications |
+| `notifications_announcement` | Announcement | Broadcast announcements |
+| `notifications_directmessage` | DirectMessage | 1-to-1 messages |
+
+---
+
+## Environment Variables
+
+Create `backend/.env`:
+
+```env
+SECRET_KEY=django-insecure-change-this-in-production
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+DB_NAME=virtual_internship_hub
+DB_USER=postgres
+DB_PASSWORD=yourpassword
+DB_HOST=localhost
+DB_PORT=5432
+
+# Optional — for chatbot LLM integration
+OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=...
+```
+
+---
+
+## Running Tests & Management Commands
+
+```bash
+# Create admin user
+python manage.py create_admin
+
+# Reset admin password
+python manage.py reset_admin
+
+# Seed assessment questions
+python manage.py seed_assessments
+
+# Train domain prediction ML model
+python manage.py train_domain_model
+
+# Train with real data only (no synthetic seed)
+python manage.py train_domain_model --no-seed
+
+# Check ML model metadata
+python manage.py train_domain_model --info
+
+# Run development server
+python manage.py runserver
+
+# Apply database migrations
+python manage.py migrate
+```
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Commit changes: `git commit -m "feat: your feature"`
+4. Push and open a Pull Request
 
 ---
 
 ## License
 
-This project is part of an academic Final Year Project (FYP).
-sdds
-
-assign student to mentor or mentor ka see all student and can also evalute
-fix frontend make it look cool and good 
-add task like internship task user can ask for mentor review(student choice)
+This project was developed as a Final Year Project (FYP) for academic purposes.
