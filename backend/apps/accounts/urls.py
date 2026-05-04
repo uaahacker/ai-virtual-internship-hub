@@ -11,6 +11,7 @@ from .views import (
     MentorPendingReviewsView, MentorSubmitReviewView,
     MentorAvailableStudentsView, MentorSelfAssignStudentView, MentorUnassignStudentView,
     AutoAssignMentorView, UpdateProfileView, ChangePasswordView,
+    AdminStatsView, AdminUserManageView, AdminCreateUserView, AdminResetPasswordView,
 )
 
 urlpatterns = [
@@ -23,8 +24,12 @@ urlpatterns = [
     path('profile/update/', UpdateProfileView.as_view(), name='update-profile'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
 
-    # Admin endpoint (mounted under /api/auth/ but logically admin)
+    # Admin endpoints
+    path('admin/stats/', AdminStatsView.as_view(), name='admin-stats'),
     path('admin/users', AdminUserListView.as_view(), name='admin-users'),
+    path('admin/users/create/', AdminCreateUserView.as_view(), name='admin-create-user'),
+    path('admin/users/<int:user_id>/', AdminUserManageView.as_view(), name='admin-manage-user'),
+    path('admin/users/<int:user_id>/reset-password/', AdminResetPasswordView.as_view(), name='admin-reset-password'),
 
     # Profile endpoints
     path('profiles/student/', StudentProfileView.as_view(), name='student-profile'),

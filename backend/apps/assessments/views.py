@@ -306,3 +306,256 @@ class StudentAttemptsListView(APIView):
         attempts = AssessmentAttempt.objects.filter(student=request.user)
         serializer = AttemptResultSerializer(attempts, many=True)
         return Response({'success': True, 'data': serializer.data})
+
+
+# ──────────────────────────────────────────────────────────────
+# Admin Assessment Management
+# ──────────────────────────────────────────────────────────────
+
+from apps.core.permissions import IsAdmin
+
+
+class AdminAssessmentListView(APIView):
+    """
+    GET  /api/assessments/admin/  – list ALL assessments (incl. inactive) with question counts
+    POST /api/assessments/admin/  – create a new assessment
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        assessments = Assessment.objects.all().order_by('domain', 'title')
+        data = []
+        for a in assessments:
+            q_count = Question.objects.filter(assessment=a).count()
+            data.append({
+                'id': a.id,
+                'title': a.title,
+                'domain': a.domain,
+                'description': a.description,
+                'time_limit': a.time_limit,
+                'is_active': a.is_active,
+                'question_count': q_count,
+                'created_at': a.created_at.isoformat(),
+            })
+        return Response({'success': True, 'data': data})
+
+    def post(self, request):
+        title = request.data.get('title', '').strip()
+        domain = request.data.get('domain', '').strip()
+        description = request.data.get('description', '').strip()
+        time_limit = request.data.get('time_limit')
+        is_active = request.data.get('is_active', True)
+
+        if not title or not domain:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'title and domain are required.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        valid_domains = [d[0] for d in Assessment.DOMAIN_CHOICES]
+        if domain not in valid_domains:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': f'Invalid domain. Choose from: {", ".join(valid_domains)}'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        assessment = Assessment.objects.create(
+            title=title,
+            domain=domain,
+            description=description,
+            time_limit=time_limit if time_limit else None,
+            is_active=is_active,
+            created_by=request.user,
+        )
+        return Response({
+            'success': True,
+            'message': 'Assessment created successfully.',
+            'data': {
+                'id': assessment.id,
+                'title': assessment.title,
+                'domain': assessment.domain,
+                'description': assessment.description,
+                'time_limit': assessment.time_limit,
+                'is_active': assessment.is_active,
+                'question_count': 0,
+                'created_at': assessment.created_at.isoformat(),
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class AdminAssessmentManageView(APIView):
+    """
+    GET    /api/assessments/admin/<pk>/  – fetch single assessment with all questions (incl. correct answers)
+    PUT    /api/assessments/admin/<pk>/  – update assessment metadata + optionally replace questions
+    DELETE /api/assessments/admin/<pk>/  – delete assessment
+    PATCH  /api/assessments/admin/<pk>/  – toggle is_active
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def _get_assessment(self, pk):
+        try:
+            return Assessment.objects.get(pk=pk)
+        except Assessment.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        assessment = self._get_assessment(pk)
+        if not assessment:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'Assessment not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+        questions = Question.objects.filter(assessment=assessment).order_by('order')
+        questions_data = [
+            {
+                'id': q.id,
+                'text': q.text,
+                'option_a': q.option_a,
+                'option_b': q.option_b,
+                'option_c': q.option_c,
+                'option_d': q.option_d,
+                'correct_option': q.correct_option,
+                'order': q.order,
+            }
+            for q in questions
+        ]
+        return Response({'success': True, 'data': {
+            'id': assessment.id,
+            'title': assessment.title,
+            'domain': assessment.domain,
+            'description': assessment.description,
+            'time_limit': assessment.time_limit,
+            'is_active': assessment.is_active,
+            'questions': questions_data,
+            'created_at': assessment.created_at.isoformat(),
+        }})
+
+    def put(self, request, pk):
+        assessment = self._get_assessment(pk)
+        if not assessment:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'Assessment not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        for field in ['title', 'domain', 'description', 'time_limit', 'is_active']:
+            if field in request.data:
+                setattr(assessment, field, request.data[field] if request.data[field] != '' else getattr(assessment, field))
+        assessment.save()
+
+        return Response({'success': True, 'message': 'Assessment updated.', 'data': {
+            'id': assessment.id, 'title': assessment.title, 'domain': assessment.domain,
+            'is_active': assessment.is_active, 'time_limit': assessment.time_limit,
+        }})
+
+    def patch(self, request, pk):
+        """Toggle is_active."""
+        assessment = self._get_assessment(pk)
+        if not assessment:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'Assessment not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+        assessment.is_active = not assessment.is_active
+        assessment.save(update_fields=['is_active'])
+        return Response({'success': True, 'message': f'Assessment {"activated" if assessment.is_active else "deactivated"}.', 'data': {'is_active': assessment.is_active}})
+
+    def delete(self, request, pk):
+        assessment = self._get_assessment(pk)
+        if not assessment:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'Assessment not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+        assessment.delete()
+        return Response({'success': True, 'message': 'Assessment deleted successfully.'})
+
+
+class AdminAssessmentQuestionView(APIView):
+    """
+    POST   /api/assessments/admin/<pk>/questions/  – add a question to an assessment
+    DELETE /api/assessments/admin/<pk>/questions/<qid>/  – remove a specific question
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request, pk):
+        try:
+            assessment = Assessment.objects.get(pk=pk)
+        except Assessment.DoesNotExist:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'Assessment not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        required = ['text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option']
+        for f in required:
+            if not request.data.get(f, '').strip():
+                return Response({'success': False, 'error': {'code': 400, 'message': f'{f} is required.'}},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        if request.data['correct_option'].upper() not in ('A', 'B', 'C', 'D'):
+            return Response({'success': False, 'error': {'code': 400, 'message': 'correct_option must be A, B, C or D.'}},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        last_order = Question.objects.filter(assessment=assessment).count()
+        q = Question.objects.create(
+            assessment=assessment,
+            text=request.data['text'],
+            option_a=request.data['option_a'],
+            option_b=request.data['option_b'],
+            option_c=request.data['option_c'],
+            option_d=request.data['option_d'],
+            correct_option=request.data['correct_option'].upper(),
+            order=last_order + 1,
+        )
+        return Response({'success': True, 'message': 'Question added.', 'data': {
+            'id': q.id, 'text': q.text, 'correct_option': q.correct_option, 'order': q.order,
+        }}, status=status.HTTP_201_CREATED)
+
+
+class AdminAssessmentQuestionDeleteView(APIView):
+    """DELETE /api/assessments/admin/<pk>/questions/<qid>/"""
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def delete(self, request, pk, qid):
+        try:
+            q = Question.objects.get(pk=qid, assessment_id=pk)
+        except Question.DoesNotExist:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'Question not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+        q.delete()
+        return Response({'success': True, 'message': 'Question deleted.'})
+
+
+class AdminTaskListView(APIView):
+    """
+    GET /api/assessments/admin/tasks/  – list all tasks (admin view with full details)
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        from apps.tasks.models import Task, TaskAssignment
+        tasks = Task.objects.all().order_by('-created_at')
+        data = []
+        for t in tasks:
+            assignment_count = TaskAssignment.objects.filter(task=t).count()
+            completed_count = TaskAssignment.objects.filter(task=t, status='completed').count()
+            data.append({
+                'id': t.id,
+                'title': t.title,
+                'domain': t.domain,
+                'difficulty': t.difficulty,
+                'is_active': t.is_active,
+                'estimated_duration': t.estimated_duration,
+                'assignment_count': assignment_count,
+                'completed_count': completed_count,
+                'created_at': t.created_at.isoformat() if t.created_at else None,
+            })
+        return Response({'success': True, 'data': data})
+
+
+class AdminTaskToggleView(APIView):
+    """PATCH /api/assessments/admin/tasks/<pk>/toggle/ – toggle task active status"""
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def patch(self, request, pk):
+        from apps.tasks.models import Task
+        try:
+            task = Task.objects.get(pk=pk)
+        except Task.DoesNotExist:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'Task not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+        task.is_active = not task.is_active
+        task.save(update_fields=['is_active'])
+        return Response({'success': True, 'message': f'Task {"activated" if task.is_active else "deactivated"}.', 'data': {'is_active': task.is_active}})
+

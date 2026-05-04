@@ -280,24 +280,19 @@ class AdminAnalyticsService:
         # Tasks completed
         tasks_completed = TaskAssignment.objects.filter(status='completed').count()
         
-        # Mentor load distribution
-        mentor_load = MentorProfile.objects.annotate(
-            student_count=Count('user__studentprofile'),
-            evaluations_count=Count(
-                'user__taskevaluation',
-                filter=Q(user__taskevaluation__status='evaluated')
-            )
-        ).values('user__id', 'user__name', 'student_count', 'evaluations_count')
-
-        mentor_load_list = [
-            {
-                'mentor_id': item['user__id'],
-                'mentor_name': item['user__name'],
-                'students_assigned': item['student_count'],
-                'evaluations_completed': item['evaluations_count']
-            }
-            for item in mentor_load
-        ]
+        # Mentor load distribution (pure Python to avoid Djongo cross-collection join issues)
+        mentor_load_list = []
+        for mp in MentorProfile.objects.select_related('user'):
+            student_count = StudentProfile.objects.filter(mentor_assigned=mp.user).count()
+            eval_count = TaskEvaluation.objects.filter(
+                evaluated_by=mp.user, status='evaluated'
+            ).count()
+            mentor_load_list.append({
+                'mentor_id': mp.user.id,
+                'mentor_name': mp.user.name,
+                'students_assigned': student_count,
+                'evaluations_completed': eval_count,
+            })
         
         # Average student performance
         all_evaluations = TaskEvaluation.objects.filter(

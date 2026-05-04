@@ -256,6 +256,9 @@ function getNavItems(role) {
     case 'Admin':
       return [
         { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
+        { path: '/admin/users', label: 'Users', icon: '👥' },
+        { path: '/admin/assessments', label: 'Assessments', icon: '📋' },
+        { path: '/admin/tasks', label: 'Tasks', icon: '🎯' },
         { path: '/admin/analytics', label: 'Analytics', icon: '📈' },
         { path: '/admin/announcements', label: 'Announcements', icon: '📢' },
       ];

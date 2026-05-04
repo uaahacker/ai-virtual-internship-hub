@@ -2,279 +2,191 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import { adminService } from '../services/endpoints';
-import { Card, CardHeader, CardBody, SectionCard, StatCard, Badge } from '../components/CardComponents';
-import { DataTable, ListItem } from '../components/DataTable';
+import { toast } from 'react-toastify';
+import ConfirmModal from '../components/ConfirmModal';
+import { Badge } from '../components/CardComponents';
+
+function StatCard({ icon, label, value, sub, color = 'blue' }) {
+  const colorMap = {
+    blue: 'from-blue-50 to-blue-100 border-blue-200 text-blue-700',
+    green: 'from-green-50 to-green-100 border-green-200 text-green-700',
+    purple: 'from-purple-50 to-purple-100 border-purple-200 text-purple-700',
+    orange: 'from-orange-50 to-orange-100 border-orange-200 text-orange-700',
+    red: 'from-red-50 to-red-100 border-red-200 text-red-700',
+    slate: 'from-slate-50 to-slate-100 border-slate-200 text-slate-700',
+  };
+  return (
+    <div className={`bg-gradient-to-br ${colorMap[color]} border rounded-xl p-5`}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
+          <p className="text-3xl font-bold mt-1">{value ?? '—'}</p>
+          {sub && <p className="text-xs mt-1 opacity-70">{sub}</p>}
+        </div>
+        <span className="text-3xl">{icon}</span>
+      </div>
+    </div>
+  );
+}
+
+function QuickAction({ icon, title, desc, to, color }) {
+  const colorMap = {
+    blue: 'bg-blue-600 hover:bg-blue-700',
+    green: 'bg-green-600 hover:bg-green-700',
+    purple: 'bg-purple-600 hover:bg-purple-700',
+    orange: 'bg-orange-600 hover:bg-orange-700',
+    slate: 'bg-slate-600 hover:bg-slate-700',
+  };
+  return (
+    <Link to={to}
+      className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition group">
+      <div className={`w-10 h-10 rounded-lg ${colorMap[color]} flex items-center justify-center text-white text-lg shrink-0`}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-600 transition">{title}</p>
+        <p className="text-xs text-slate-500 truncate">{desc}</p>
+      </div>
+      <span className="ml-auto text-slate-300 group-hover:text-blue-400 transition">→</span>
+    </Link>
+  );
+}
+
+const ROLE_COLORS = { Student: 'info', Mentor: 'success', Admin: 'primary' };
 
 export default function AdminDashboard() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [autoAssigning, setAutoAssigning] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   useEffect(() => {
-    adminService.getUsers()
-      .then((res) => setUsers(res.data.data || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    adminService.getStats()
+      .then((res) => setStats(res.data.data))
+      .catch(() => toast.error('Failed to load stats'))
+      .finally(() => setLoadingStats(false));
   }, []);
 
-  const stats = {
-    total: users.length,
-    students: users.filter((u) => u.role === 'Student').length,
-    mentors: users.filter((u) => u.role === 'Mentor').length,
-    admins: users.filter((u) => u.role === 'Admin').length,
+  const handleAutoAssign = () => {
+    setConfirmModal({
+      title: 'Auto-Assign Mentors',
+      message: 'This will automatically assign mentors to all unassigned students based on domain matching. Continue?',
+      confirmLabel: 'Run Auto-Assign',
+      onConfirm: async () => {
+        setAutoAssigning(true);
+        try {
+          const res = await adminService.autoAssignMentors();
+          toast.success(res.data.message || 'Auto-assign complete');
+          const s = await adminService.getStats();
+          setStats(s.data.data);
+        } catch (err) {
+          toast.error(err.response?.data?.error?.message || 'Auto-assign failed');
+        } finally {
+          setAutoAssigning(false);
+        }
+      },
+    });
   };
 
-  const getRoleStatus = (role) => {
-    if (role === 'Student') return 'info';
-    if (role === 'Mentor') return 'success';
-    if (role === 'Admin') return 'primary';
-    return 'default';
-  };
-
-  const getStatusColor = (status) => {
-    return status === 'Active' ? 'success' : 'error';
-  };
-
-  const tableColumns = [
-    { key: 'name', label: 'Name' },
-    {
-      key: 'email',
-      label: 'Email',
-      render: (val) => <span className="text-slate-600">{val}</span>,
-    },
-    {
-      key: 'role',
-      label: 'Role',
-      render: (val) => <Badge text={val} status={getRoleStatus(val)} size="sm" />,
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (val) => <Badge text={val} status={getStatusColor(val)} size="sm" />,
-    },
-    {
-      key: 'created_at',
-      label: 'Joined',
-      render: (val) => new Date(val).toLocaleDateString(),
-    },
-  ];
+  const u = stats?.users || {};
+  const t = stats?.tasks || {};
+  const a = stats?.assessments || {};
 
   return (
     <DashboardLayout>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Admin Control Center ⚙️</h1>
-        <p className="text-slate-600 mt-2">Manage users, monitor platform activity, and system settings</p>
+      <div className="mb-7">
+        <h1 className="text-3xl font-bold text-slate-900">⚙️ Admin Control Center</h1>
+        <p className="text-slate-500 mt-1 text-sm">Full platform management — users, assessments, tasks, and system operations</p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          label="Total Users"
-          value={stats.total}
-          icon="👥"
-          change={`${stats.students} students, ${stats.mentors} mentors`}
-        />
-        <StatCard
-          label="Students"
-          value={stats.students}
-          icon="📚"
-          change={`${((stats.students / stats.total) * 100).toFixed(0)}% of total`}
-        />
-        <StatCard
-          label="Mentors"
-          value={stats.mentors}
-          icon="👨‍🏫"
-          change={`${((stats.mentors / stats.total) * 100).toFixed(0)}% of total`}
-        />
-        <StatCard
-          label="Admins"
-          value={stats.admins}
-          icon="🔐"
-        />
-      </div>
+      {loadingStats ? (
+        <div className="flex justify-center py-12">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <>
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Users</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-7">
+            <StatCard icon="👥" label="Total" value={u.total} color="blue" />
+            <StatCard icon="📚" label="Students" value={u.students}
+              sub={`${u.total ? Math.round((u.students / u.total) * 100) : 0}% of total`} color="green" />
+            <StatCard icon="👨‍🏫" label="Mentors" value={u.mentors} color="purple" />
+            <StatCard icon="🔐" label="Admins" value={u.admins} color="orange" />
+            <StatCard icon="✅" label="Active" value={u.active} color="green" />
+            <StatCard icon="⚠️" label="Unassigned" value={u.unassigned_students}
+              sub="students w/o mentor" color={u.unassigned_students > 0 ? 'red' : 'slate'} />
+          </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Users Table - Main */}
-        <div className="lg:col-span-2">
-          <SectionCard
-            title="📋 User Management"
-            subtitle={`${users.length} total users`}
-            action={
-              <Link to="/admin/users" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                View All →
-              </Link>
-            }
-          >
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Tasks & Assessments</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <StatCard icon="🎯" label="Total Tasks" value={t.total} sub={`${t.active} active`} color="blue" />
+            <StatCard icon="📌" label="Assignments" value={t.total_assignments} sub={`${t.completed_assignments} completed`} color="green" />
+            <StatCard icon="📋" label="Assessments" value={a.total} color="purple" />
+            <StatCard icon="📊" label="Attempts" value={a.total_attempts} color="orange" />
+          </div>
+        </>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-3">
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <QuickAction icon="👥" title="User Management" desc="Create, edit, delete users & reset passwords" to="/admin/users" color="blue" />
+            <QuickAction icon="📋" title="Assessments" desc="Manage assessments and questions" to="/admin/assessments" color="green" />
+            <QuickAction icon="🎯" title="Tasks" desc="View all tasks, toggle active status" to="/admin/tasks" color="purple" />
+            <QuickAction icon="📈" title="Analytics" desc="Platform-wide performance reports" to="/admin/analytics" color="orange" />
+            <QuickAction icon="📢" title="Announcements" desc="Post system-wide announcements" to="/admin/announcements" color="slate" />
+          </div>
+
+          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl p-5 mt-4">
+            <div className="flex items-start gap-4">
+              <div className="text-3xl">🤖</div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-slate-900">Auto-Assign Mentors</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  Automatically match {u.unassigned_students ?? '...'} unassigned students to mentors based on domain expertise.
+                </p>
               </div>
+              <button onClick={handleAutoAssign} disabled={autoAssigning}
+                className="shrink-0 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50">
+                {autoAssigning ? 'Running...' : 'Run Now'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Recent Users</h2>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {loadingStats ? (
+              <div className="p-6 text-center text-slate-400 text-sm">Loading...</div>
             ) : (
-              <DataTable
-                columns={tableColumns}
-                data={users.slice(0, 10)}
-                pagination={false}
-                onRowClick={(row) => console.log('User clicked:', row)}
-              />
+              <>
+                {(stats?.recent_users || []).map((ru) => (
+                  <div key={ru.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-b-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                      {ru.name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">{ru.name}</p>
+                      <p className="text-xs text-slate-500 truncate">{ru.email}</p>
+                    </div>
+                    <Badge text={ru.role} status={ROLE_COLORS[ru.role] || 'default'} size="sm" />
+                  </div>
+                ))}
+                <div className="px-4 py-3 text-center">
+                  <Link to="/admin/users" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    View all users →
+                  </Link>
+                </div>
+              </>
             )}
-          </SectionCard>
-        </div>
-
-        {/* Admin Actions - Sidebar */}
-        <div className="space-y-4">
-          {/* User Management */}
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <CardBody className="text-center">
-              <div className="text-4xl mb-3">👥</div>
-              <h3 className="font-semibold text-slate-900 mb-2">Users</h3>
-              <p className="text-sm text-slate-700 mb-4">
-                Manage all users and permissions
-              </p>
-              <Link
-                to="/admin/users"
-                className="block px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-center text-sm"
-              >
-                Manage Users →
-              </Link>
-            </CardBody>
-          </Card>
-
-          {/* Assessments */}
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-            <CardBody className="text-center">
-              <div className="text-4xl mb-3">📋</div>
-              <h3 className="font-semibold text-slate-900 mb-2">Assessments</h3>
-              <p className="text-sm text-slate-700 mb-4">
-                Create and manage skill assessments
-              </p>
-              <Link
-                to="/admin/assessments"
-                className="block px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-center text-sm"
-              >
-                Go To Assessments →
-              </Link>
-            </CardBody>
-          </Card>
-
-          {/* Tasks */}
-          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-            <CardBody className="text-center">
-              <div className="text-4xl mb-3">🎯</div>
-              <h3 className="font-semibold text-slate-900 mb-2">Tasks</h3>
-              <p className="text-sm text-slate-700 mb-4">
-                Create and manage learning tasks
-              </p>
-              <Link
-                to="/admin/tasks"
-                className="block px-4 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 transition-colors text-center text-sm"
-              >
-                Manage Tasks →
-              </Link>
-            </CardBody>
-          </Card>
-
-          {/* Reports & Analytics */}
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-            <CardBody className="text-center">
-              <div className="text-4xl mb-3">📈</div>
-              <h3 className="font-semibold text-slate-900 mb-2">Analytics</h3>
-              <p className="text-sm text-slate-700 mb-4">
-                View detailed platform metrics
-              </p>
-              <Link
-                to="/admin/reports"
-                className="block px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-center text-sm"
-              >
-                View Reports →
-              </Link>
-            </CardBody>
-          </Card>
-
-          {/* Settings */}
-          <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
-            <CardBody className="text-center">
-              <div className="text-4xl mb-3">⚙️</div>
-              <h3 className="font-semibold text-slate-900 mb-2">Settings</h3>
-              <p className="text-sm text-slate-700 mb-4">
-                Configure system settings
-              </p>
-              <Link
-                to="/admin/settings"
-                className="block px-4 py-2 bg-slate-600 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors text-center text-sm"
-              >
-                Go To Settings →
-              </Link>
-            </CardBody>
-          </Card>
+          </div>
         </div>
       </div>
 
-      {/* System Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Active Sessions */}
-        <SectionCard
-          title="🟢 Active Sessions"
-          subtitle="Real-time system activity"
-        >
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-slate-700">Online Users</span>
-              <Badge text={Math.floor(Math.random() * 50 + 10)} status="success" size="sm" />
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-slate-700">Active Sessions</span>
-              <Badge text={Math.floor(Math.random() * 30 + 5)} status="info" size="sm" />
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-slate-700">System Status</span>
-              <Badge text="Operational" status="success" size="sm" />
-            </div>
-          </div>
-        </SectionCard>
-
-        {/* Platform Stats */}
-        <SectionCard
-          title="📊 Platform Stats"
-          subtitle="Last 30 days"
-        >
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-slate-700">Assessments Taken</span>
-              <span className="font-bold text-slate-900">{Math.floor(Math.random() * 500 + 100)}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-slate-700">Tasks Completed</span>
-              <span className="font-bold text-slate-900">{Math.floor(Math.random() * 300 + 50)}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-slate-700">New Users</span>
-              <span className="font-bold text-slate-900">{Math.floor(Math.random() * 50 + 10)}</span>
-            </div>
-          </div>
-        </SectionCard>
-
-        {/* System Health */}
-        <SectionCard
-          title="🏥 System Health"
-          subtitle="Current status"
-        >
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-slate-700">Database</span>
-              <Badge text="Healthy" status="success" size="sm" />
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-slate-700">API Server</span>
-              <Badge text="Healthy" status="success" size="sm" />
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-slate-700">Storage</span>
-              <Badge text="88% Used" status="warning" size="sm" />
-            </div>
-          </div>
-        </SectionCard>
-      </div>
+      <ConfirmModal config={confirmModal} onClose={() => setConfirmModal(null)} />
     </DashboardLayout>
   );
 }
+

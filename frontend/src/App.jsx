@@ -12,6 +12,9 @@ import RegisterPage from './pages/RegisterPage';
 import StudentDashboard from './pages/StudentDashboard';
 import MentorDashboard from './pages/MentorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminUsersPage from './pages/AdminUsersPage';
+import AdminAssessmentsPage from './pages/AdminAssessmentsPage';
+import AdminTasksPage from './pages/AdminTasksPage';
 
 // Analytics pages
 import StudentAnalyticsDashboard from './pages/StudentAnalyticsDashboard';
@@ -125,6 +128,9 @@ function App() {
       <Route path="/admin/dashboard" element={<ProtectedRoute role="Admin"><AdminDashboard /></ProtectedRoute>} />
       <Route path="/admin/analytics" element={<ProtectedRoute role="Admin"><AdminAnalyticsDashboard /></ProtectedRoute>} />
       <Route path="/admin/announcements" element={<ProtectedRoute role="Admin"><AnnouncementsPage /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute role="Admin"><AdminUsersPage /></ProtectedRoute>} />
+      <Route path="/admin/assessments" element={<ProtectedRoute role="Admin"><AdminAssessmentsPage /></ProtectedRoute>} />
+      <Route path="/admin/tasks" element={<ProtectedRoute role="Admin"><AdminTasksPage /></ProtectedRoute>} />
 
       {/* Default redirect */}
       <Route path="*" element={<Navigate to="/" />} />

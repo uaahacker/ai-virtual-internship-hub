@@ -742,6 +742,207 @@ class ChangePasswordView(APIView):
         })
 
 
+# ---------- Admin Management Views ----------
+
+class AdminStatsView(APIView):
+    """
+    GET /api/auth/admin/stats/
+    Returns platform-wide statistics for the admin dashboard.
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        from apps.tasks.models import Task, TaskAssignment, TaskCompletion
+        from apps.assessments.models import Assessment, AssessmentAttempt
+
+        total_users = User.objects.count()
+        students = User.objects.filter(role='Student').count()
+        mentors = User.objects.filter(role='Mentor').count()
+        admins = User.objects.filter(role='Admin').count()
+        active_users = User.objects.filter(status='Active').count()
+
+        total_tasks = Task.objects.count()
+        active_tasks = Task.objects.filter(is_active=True).count()
+        total_assignments = TaskAssignment.objects.count()
+        completed_assignments = TaskAssignment.objects.filter(status='completed').count()
+
+        total_assessments = Assessment.objects.count()
+        total_attempts = AssessmentAttempt.objects.count()
+
+        unassigned_students = StudentProfile.objects.filter(mentor_assigned__isnull=True).count()
+
+        # Recent activity: last 7 users
+        recent_users = User.objects.order_by('-created_at')[:5]
+        recent_users_data = [
+            {'id': u.id, 'name': u.name, 'email': u.email, 'role': u.role, 'created_at': u.created_at.isoformat()}
+            for u in recent_users
+        ]
+
+        return Response({
+            'success': True,
+            'data': {
+                'users': {
+                    'total': total_users,
+                    'students': students,
+                    'mentors': mentors,
+                    'admins': admins,
+                    'active': active_users,
+                    'inactive': total_users - active_users,
+                    'unassigned_students': unassigned_students,
+                },
+                'tasks': {
+                    'total': total_tasks,
+                    'active': active_tasks,
+                    'inactive': total_tasks - active_tasks,
+                    'total_assignments': total_assignments,
+                    'completed_assignments': completed_assignments,
+                },
+                'assessments': {
+                    'total': total_assessments,
+                    'total_attempts': total_attempts,
+                },
+                'recent_users': recent_users_data,
+            }
+        })
+
+
+class AdminUserManageView(APIView):
+    """
+    GET  /api/auth/admin/users/<user_id>/  – fetch single user
+    PUT  /api/auth/admin/users/<user_id>/  – update name/email/role/status
+    DELETE /api/auth/admin/users/<user_id>/  – delete user
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'User not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+        return Response({'success': True, 'data': UserSerializer(user).data})
+
+    def put(self, request, user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'User not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Prevent admin from deactivating/deleting their own account
+        if user == request.user and request.data.get('status') == 'Inactive':
+            return Response({'success': False, 'error': {'code': 400, 'message': 'You cannot deactivate your own account.'}},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        allowed_fields = ['name', 'email', 'role', 'status']
+        for field in allowed_fields:
+            if field in request.data:
+                if field == 'email':
+                    new_email = request.data['email'].lower()
+                    if User.objects.filter(email__iexact=new_email).exclude(pk=user_id).exists():
+                        return Response({'success': False, 'error': {'code': 400, 'message': 'Email already in use.'}},
+                                        status=status.HTTP_400_BAD_REQUEST)
+                    setattr(user, field, new_email)
+                elif field == 'role' and request.data['role'] not in ['Student', 'Mentor', 'Admin']:
+                    return Response({'success': False, 'error': {'code': 400, 'message': 'Invalid role.'}},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                elif field == 'status' and request.data['status'] not in ['Active', 'Inactive']:
+                    return Response({'success': False, 'error': {'code': 400, 'message': 'Invalid status.'}},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    setattr(user, field, request.data[field])
+
+        user.save()
+        return Response({'success': True, 'message': 'User updated successfully.', 'data': UserSerializer(user).data})
+
+    def delete(self, request, user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'User not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if user == request.user:
+            return Response({'success': False, 'error': {'code': 400, 'message': 'You cannot delete your own account.'}},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user.delete()
+        return Response({'success': True, 'message': 'User deleted successfully.'})
+
+
+class AdminCreateUserView(APIView):
+    """
+    POST /api/auth/admin/users/create/
+    Admin creates a new user (any role, including Admin).
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request):
+        name = request.data.get('name', '').strip()
+        email = request.data.get('email', '').strip().lower()
+        password = request.data.get('password', '').strip()
+        role = request.data.get('role', 'Student')
+        user_status = request.data.get('status', 'Active')
+
+        if not name or not email or not password:
+            return Response({'success': False, 'error': {'code': 400, 'message': 'name, email and password are required.'}},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if role not in ['Student', 'Mentor', 'Admin']:
+            return Response({'success': False, 'error': {'code': 400, 'message': 'Invalid role.'}},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if User.objects.filter(email__iexact=email).exists():
+            return Response({'success': False, 'error': {'code': 400, 'message': 'Email already in use.'}},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        from django.contrib.auth.password_validation import validate_password
+        try:
+            validate_password(password)
+        except Exception as e:
+            return Response({'success': False, 'error': {'code': 400, 'message': str(e)}},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(email=email, name=name, password=password, role=role)
+        user.status = user_status
+        if role == 'Admin':
+            user.is_staff = True
+        user.save()
+
+        # Create matching profile
+        if role == 'Student':
+            StudentProfile.objects.get_or_create(user=user)
+        elif role == 'Mentor':
+            MentorProfile.objects.get_or_create(user=user)
+
+        return Response({'success': True, 'message': 'User created successfully.', 'data': UserSerializer(user).data},
+                        status=status.HTTP_201_CREATED)
+
+
+class AdminResetPasswordView(APIView):
+    """
+    POST /api/auth/admin/users/<user_id>/reset-password/
+    Admin sets a new password for any user.
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request, user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'success': False, 'error': {'code': 404, 'message': 'User not found.'}},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        new_password = request.data.get('new_password', '').strip()
+        if not new_password or len(new_password) < 8:
+            return Response({'success': False, 'error': {'code': 400, 'message': 'Password must be at least 8 characters.'}},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        return Response({'success': True, 'message': f'Password reset successfully for {user.email}.'})
+
+
 # ---------- helpers ----------
 
 def _get_tokens(user):

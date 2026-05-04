@@ -28,7 +28,30 @@ export const profileService = {
 };
 
 export const adminService = {
+  // Users
+  getStats: () => api.get('/auth/admin/stats/'),
   getUsers: () => api.get('/auth/admin/users'),
+  createUser: (data) => api.post('/auth/admin/users/create/', data),
+  updateUser: (id, data) => api.put(`/auth/admin/users/${id}/`, data),
+  deleteUser: (id) => api.delete(`/auth/admin/users/${id}/`),
+  resetPassword: (id, newPassword) => api.post(`/auth/admin/users/${id}/reset-password/`, { new_password: newPassword }),
+
+  // Assessments
+  getAssessments: () => api.get('/assessments/admin/'),
+  createAssessment: (data) => api.post('/assessments/admin/', data),
+  getAssessment: (id) => api.get(`/assessments/admin/${id}/`),
+  updateAssessment: (id, data) => api.put(`/assessments/admin/${id}/`, data),
+  toggleAssessment: (id) => api.patch(`/assessments/admin/${id}/`),
+  deleteAssessment: (id) => api.delete(`/assessments/admin/${id}/`),
+  addQuestion: (assessmentId, data) => api.post(`/assessments/admin/${assessmentId}/questions/`, data),
+  deleteQuestion: (assessmentId, questionId) => api.delete(`/assessments/admin/${assessmentId}/questions/${questionId}/`),
+
+  // Tasks (admin view)
+  getTasks: () => api.get('/assessments/admin/tasks/'),
+  toggleTask: (id) => api.patch(`/assessments/admin/tasks/${id}/toggle/`),
+
+  // Announcements (reuse existing announcementService routes)
+  autoAssignMentors: () => api.post('/auth/mentor/auto-assign/'),
 };
 
 export const taskService = {
