@@ -4,6 +4,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import ChatMessage from '../components/ChatMessage';
 import { Card, CardHeader, CardBody } from '../components/CardComponents';
 import { EmptyState, Alert } from '../components/ProgressAndUtilityComponents';
+import ConfirmModal from '../components/ConfirmModal';
 
 const ChatPage = () => {
   const {
@@ -24,31 +25,32 @@ const ChatPage = () => {
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState('');
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [initialising, setInitialising] = useState(true);
+  const initDone = useRef(false);
   const messagesEndRef = useRef(null);
 
-  // Initialize: fetch sessions on mount
+  // Single initialisation: fetch sessions, then load the most recent one.
+  // Never auto-create — let the user click "+ New Chat".
   useEffect(() => {
-    const initChat = async () => {
-      console.log('🔄 Initializing chat...');
-      await fetchSessions();
-    };
-    initChat();
-  }, []);
+    if (initDone.current) return;  // StrictMode guard — run once only
+    initDone.current = true;
 
-  // Auto-create session if none exist
-  useEffect(() => {
-    const autoCreateSession = async () => {
-      if (sessions.length === 0 && !loading && !currentSession) {
-        console.log('📝 Creating first chat session...');
-        await createSession();
-      } else if (sessions.length > 0 && !currentSession) {
-        // Load first session if sessions exist but none is selected
-        console.log('📂 Loading first session:', sessions[0].id);
-        await loadSession(sessions[0].id);
-      }
+    const init = async () => {
+      setInitialising(true);
+      await fetchSessions();
+      setInitialising(false);
     };
-    autoCreateSession();
-  }, [sessions, currentSession, loading]);
+    init();
+  }, [fetchSessions]);
+
+  // Auto-load most recent existing session once sessions are fetched
+  useEffect(() => {
+    if (initialising) return;
+    if (currentSession) return;      // already have one
+    if (sessions.length === 0) return; // nothing to load, show welcome screen
+    loadSession(sessions[0].id);
+  }, [initialising]); // only re-run when initialising flips to false
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -69,10 +71,16 @@ const ChatPage = () => {
 
   const handleDeleteSession = async (sessionId, e) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this chat?')) {
-      await deleteSession(sessionId);
-      fetchSessions();
-    }
+    setConfirmModal({
+      title: 'Delete conversation?',
+      message: 'This chat and all its messages will be permanently removed.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        await deleteSession(sessionId);
+        fetchSessions();
+      },
+    });
   };
 
   const handleSubmitFeedback = async () => {
@@ -99,23 +107,25 @@ const ChatPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex gap-6 h-full">
+      {/* Chat layout: viewport-relative height so sidebar scroll always works */}
+      <div className="flex gap-4 h-[calc(100vh-7rem)]">
         {/* Sidebar - Sessions List */}
-        <div className="hidden lg:block w-72 flex-shrink-0">
-          <Card className="flex flex-col h-full">
-            <CardHeader className="border-b border-slate-200">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-slate-900">💬 Conversations</h2>
-              </div>
+        <div className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0">
+          {/* Use plain div (not Card) so flex-col + overflow chain is direct */}
+          <div className="flex flex-col h-full bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+            <div className="shrink-0 p-4 border-b border-slate-200 space-y-3">
+              <h2 className="text-base font-bold text-slate-900">💬 Conversations</h2>
               <button
                 onClick={handleNewChat}
                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-medium text-sm"
               >
                 + New Chat
               </button>
-            </CardHeader>
+            </div>
             <div className="flex-1 overflow-y-auto p-2">
-              {sessions.length === 0 ? (
+              {initialising ? (
+                <div className="p-4 text-center text-slate-400 text-sm">Loading...</div>
+              ) : sessions.length === 0 ? (
                 <div className="p-4 text-center text-slate-500 text-sm">
                   No conversations yet. Start a new one!
                 </div>
@@ -124,7 +134,7 @@ const ChatPage = () => {
                   <div
                     key={session.id}
                     onClick={() => loadSession(session.id)}
-                    className={`p-3 mb-2 rounded-lg cursor-pointer transition-all ${
+                    className={`p-3 mb-1.5 rounded-lg cursor-pointer transition-all ${
                       currentSession?.id === session.id
                         ? 'bg-blue-100 border border-blue-300'
                         : 'hover:bg-slate-100 border border-transparent'
@@ -135,16 +145,16 @@ const ChatPage = () => {
                         <p className="font-semibold text-slate-900 truncate text-sm">
                           {session.title}
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {new Date(session.updated_at).toLocaleDateString()}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {session.message_count || 0} messages
+                        <p className="text-xs text-slate-400">
+                          {session.message_count || 0} msg{session.message_count !== 1 ? 's' : ''}
                         </p>
                       </div>
                       <button
                         onClick={(e) => handleDeleteSession(session.id, e)}
-                        className="text-slate-400 hover:text-red-600 transition text-lg leading-none"
+                        className="shrink-0 text-slate-300 hover:text-red-500 transition text-base leading-none pt-0.5"
                         title="Delete conversation"
                       >
                         ✕
@@ -154,24 +164,22 @@ const ChatPage = () => {
                 ))
               )}
             </div>
-          </Card>
+          </div>
         </div>
 
         {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col">
-          {loading && !currentSession ? (
-            <Card className="flex items-center justify-center h-full">
+        <div className="flex-1 flex flex-col min-w-0">
+          {initialising ? (
+            <div className="flex items-center justify-center flex-1 bg-white rounded-lg border border-slate-200">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-                  <div className="w-12 h-12 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-                <p className="text-slate-600 text-lg">Initializing chat...</p>
+                <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-slate-500 text-sm">Loading conversations...</p>
               </div>
-            </Card>
+            </div>
           ) : currentSession ? (
-            <Card className="flex flex-col h-full">
+            <div className="flex flex-col h-full bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
               {/* Header */}
-              <CardHeader className="border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-blue-50">
+              <div className="shrink-0 px-5 py-4 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-blue-50">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">{currentSession.title}</h2>
@@ -179,9 +187,9 @@ const ChatPage = () => {
                       {messages.length} messages
                     </p>
                   </div>
-                  <div className="text-3xl">💬</div>
+                  <div className="text-2xl">💬</div>
                 </div>
-              </CardHeader>
+              </div>
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -264,21 +272,22 @@ const ChatPage = () => {
                   </button>
                 </div>
               </div>
-            </Card>
+            </div>
           ) : (
-            <EmptyState
-              icon="💬"
-              title="No conversation selected"
-              description="Select a conversation or start a new chat to begin"
-              action={
-                <button
-                  onClick={handleNewChat}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-                >
-                  Start New Chat
-                </button>
-              }
-            />
+            /* No session selected — show welcome screen */
+            <div className="flex flex-col items-center justify-center flex-1 bg-white rounded-lg border border-slate-200 text-center p-8">
+              <div className="text-5xl mb-4">💬</div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Start a conversation</h3>
+              <p className="text-slate-500 text-sm mb-6 max-w-xs">
+                Get career guidance, freelancing tips, skill recommendations and more from your AI assistant.
+              </p>
+              <button
+                onClick={handleNewChat}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm"
+              >
+                + New Chat
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -331,6 +340,7 @@ const ChatPage = () => {
           </Card>
         </div>
       )}
+      <ConfirmModal config={confirmModal} onClose={() => setConfirmModal(null)} />
     </DashboardLayout>
   );
 };

@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import DashboardLayout from '../components/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { announcementService } from '../services/endpoints';
+import ConfirmModal from '../components/ConfirmModal';
 
 const AUDIENCE_OPTIONS = [
   { value: 'All', label: 'Everyone' },
@@ -17,6 +18,7 @@ export default function AnnouncementsPage() {
 
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -64,18 +66,25 @@ export default function AnnouncementsPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this announcement?')) return;
-    try {
-      const res = await announcementService.delete(id);
-      if (res.data.success) {
-        toast.success('Deleted.');
-        setAnnouncements((prev) => prev.filter((a) => a.id !== id));
-      } else {
-        toast.error(res.data.error || 'Failed to delete.');
-      }
-    } catch {
-      toast.error('Error deleting announcement.');
-    }
+    setConfirmModal({
+      title: 'Delete announcement?',
+      message: 'This announcement will be permanently removed.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await announcementService.delete(id);
+          if (res.data.success) {
+            toast.success('Deleted.');
+            setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+          } else {
+            toast.error(res.data.error || 'Failed to delete.');
+          }
+        } catch {
+          toast.error('Error deleting announcement.');
+        }
+      },
+    });
   };
 
   const audienceBadgeClass = (audience) => {
@@ -205,6 +214,7 @@ export default function AnnouncementsPage() {
           </div>
         )}
       </div>
+      <ConfirmModal config={confirmModal} onClose={() => setConfirmModal(null)} />
     </DashboardLayout>
   );
 }

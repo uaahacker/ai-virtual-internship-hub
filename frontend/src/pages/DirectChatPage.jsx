@@ -126,7 +126,7 @@ export default function DirectChatPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-3xl mx-auto px-4 py-6 flex flex-col" style={{ height: 'calc(100vh - 80px)' }}>
+      <div className="max-w-3xl mx-auto px-4 py-4 flex flex-col flex-1 min-h-0 h-full">
         {/* Header */}
         <div className="bg-white rounded-t-xl border border-b-0 border-gray-200 px-5 py-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg">

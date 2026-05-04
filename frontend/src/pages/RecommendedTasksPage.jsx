@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import { taskService } from '../services/endpoints';
 import TaskCard from '../components/TaskCard';
@@ -60,7 +61,7 @@ export default function RecommendedTasksPage() {
         // Remove task from list
         setTasks(tasks.filter(task => task.id !== assignmentId));
         // Show success message
-        alert(
+        toast.success(
           accept
             ? 'Task accepted! Check "My Tasks" to start working on it.'
             : 'Recommendation declined.'

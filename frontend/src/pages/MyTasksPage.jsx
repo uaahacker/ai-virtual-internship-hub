@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import { taskService } from '../services/endpoints';
 import DashboardLayout from '../components/DashboardLayout';
+import { ProgressModal } from '../components/ConfirmModal';
 
 export default function MyTasksPage() {
   const { user } = useAuth();
@@ -13,6 +15,8 @@ export default function MyTasksPage() {
   const [filterStatus, setFilterStatus] = useState('all'); // all, accepted, in_progress, completed
   const [selectedTask, setSelectedTask] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [progressModal, setProgressModal] = useState(null);
+  const [progressValue, setProgressValue] = useState(0);
 
   const STATUS_COLORS = {
     accepted: 'bg-blue-50 border-blue-200',
@@ -111,7 +115,7 @@ export default function MyTasksPage() {
           tasks.map(t => (t.id === taskId ? response.data.data : t))
         );
         setSelectedTask(response.data.data);
-        alert('Mentor review requested successfully!');
+        toast.success('Mentor review requested successfully!');
       } else {
         setError(response.data.error?.message || 'Failed to request review');
       }
@@ -309,16 +313,12 @@ export default function MyTasksPage() {
                       <>
                         <button
                           onClick={() => {
-                            const progress = prompt(
-                              'Enter progress percentage (0-100):',
-                              activeTask.progress_percentage.toString()
-                            );
-                            if (progress !== null) {
-                              handleUpdateProgress(
-                                activeTask.id,
-                                Math.min(100, Math.max(0, parseInt(progress) || 0))
-                              );
-                            }
+                            setProgressValue(activeTask.progress_percentage);
+                            setProgressModal({
+                              value: activeTask.progress_percentage,
+                              onChange: (v) => setProgressValue(v),
+                              onConfirm: () => handleUpdateProgress(activeTask.id, progressValue),
+                            });
                           }}
                           disabled={updating}
                           className="px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 disabled:opacity-50"
@@ -364,6 +364,10 @@ export default function MyTasksPage() {
           </div>
         )}
       </div>
+      <ProgressModal
+        config={progressModal ? { ...progressModal, value: progressValue, onChange: setProgressValue } : null}
+        onClose={() => setProgressModal(null)}
+      />
     </DashboardLayout>
   );
 }

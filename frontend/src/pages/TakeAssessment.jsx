@@ -4,6 +4,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import { assessmentService } from '../services/endpoints';
 import { toast } from 'react-toastify';
 import { FiClock, FiChevronLeft, FiChevronRight, FiSend } from 'react-icons/fi';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function TakeAssessment() {
   const { id } = useParams();
@@ -13,6 +14,7 @@ export default function TakeAssessment() {
   const [answers, setAnswers] = useState({});
   const [currentQ, setCurrentQ] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   useEffect(() => {
     assessmentService.detail(id)
@@ -30,23 +32,30 @@ export default function TakeAssessment() {
     const total = assessment.questions.length;
     const answered = Object.keys(answers).length;
 
-    if (answered < total) {
-      const proceed = window.confirm(
-        `You've answered ${answered} of ${total} questions. Unanswered questions will be marked wrong. Submit anyway?`
-      );
-      if (!proceed) return;
-    }
+    const doSubmit = async () => {
+      setSubmitting(true);
+      try {
+        const res = await assessmentService.submit(id, answers);
+        toast.success('Assessment submitted!');
+        navigate(`/student/results/${res.data.data.id}`);
+      } catch (err) {
+        const msg = err.response?.data?.error?.message || 'Submission failed.';
+        toast.error(msg);
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
-    setSubmitting(true);
-    try {
-      const res = await assessmentService.submit(id, answers);
-      toast.success('Assessment submitted!');
-      navigate(`/student/results/${res.data.data.id}`);
-    } catch (err) {
-      const msg = err.response?.data?.error?.message || 'Submission failed.';
-      toast.error(msg);
-    } finally {
-      setSubmitting(false);
+    if (answered < total) {
+      setConfirmModal({
+        title: 'Submit with unanswered questions?',
+        message: `You've answered ${answered} of ${total} questions. Unanswered questions will be marked wrong.`,
+        confirmLabel: 'Submit Anyway',
+        danger: false,
+        onConfirm: doSubmit,
+      });
+    } else {
+      await doSubmit();
     }
   };
 
@@ -171,6 +180,7 @@ export default function TakeAssessment() {
           </button>
         )}
       </div>
+      <ConfirmModal config={confirmModal} onClose={() => setConfirmModal(null)} />
     </DashboardLayout>
   );
 }

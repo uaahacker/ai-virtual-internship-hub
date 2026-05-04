@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 
@@ -273,7 +274,7 @@ export default function PortfolioPage() {
       const res = await api.put(`/tasks/portfolios/${portfolio.id}/update/`, formData);
       if (res.data.success) { setPortfolio(res.data.data); setEditMode(false); }
     } catch (err) {
-      alert(err.response?.data?.errors || 'Failed to update portfolio');
+      toast.error(err.response?.data?.errors || 'Failed to update portfolio');
     }
   };
 
@@ -296,7 +297,7 @@ export default function PortfolioPage() {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       }
-    } catch (_) { alert('Failed to export portfolio'); }
+    } catch (_) { toast.error('Failed to export portfolio'); }
   };
 
   const getVisibleItems = () => {

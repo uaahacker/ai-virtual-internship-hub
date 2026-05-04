@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import DashboardLayout from '../components/DashboardLayout';
 import { taskService } from '../services/endpoints';
+import ConfirmModal from '../components/ConfirmModal';
 
 const DIFFICULTY_OPTIONS = ['Easy', 'Medium', 'Hard'];
 const ANSWER_OPTIONS = ['A', 'B', 'C', 'D'];
@@ -33,6 +34,7 @@ export default function MentorTaskMCQPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   const loadQuestions = useCallback(async () => {
     setLoading(true);
@@ -114,21 +116,28 @@ export default function MentorTaskMCQPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this question?')) return;
-    setDeletingId(id);
-    try {
-      const res = await taskService.deleteMentorTaskMCQ(taskId, id);
-      if (res.data.success) {
-        toast.success('Question deleted.');
-        setQuestions((prev) => prev.filter((q) => q.id !== id));
-      } else {
-        toast.error(res.data.error || 'Delete failed.');
-      }
-    } catch {
-      toast.error('Delete failed.');
-    } finally {
-      setDeletingId(null);
-    }
+    setConfirmModal({
+      title: 'Delete question?',
+      message: 'This MCQ question will be permanently removed.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setDeletingId(id);
+        try {
+          const res = await taskService.deleteMentorTaskMCQ(taskId, id);
+          if (res.data.success) {
+            toast.success('Question deleted.');
+            setQuestions((prev) => prev.filter((q) => q.id !== id));
+          } else {
+            toast.error(res.data.error || 'Delete failed.');
+          }
+        } catch {
+          toast.error('Delete failed.');
+        } finally {
+          setDeletingId(null);
+        }
+      },
+    });
   };
 
   const difficultyColor = (d) => ({
@@ -361,6 +370,7 @@ export default function MentorTaskMCQPage() {
           </div>
         )}
       </div>
+      <ConfirmModal config={confirmModal} onClose={() => setConfirmModal(null)} />
     </DashboardLayout>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 
@@ -46,10 +47,10 @@ export default function PortfolioItemDetailPage() {
       if (res.data.success) {
         setItem(res.data.data);
         setEditMode(false);
-        alert('Portfolio item updated successfully');
+        toast.success('Portfolio item updated successfully');
       }
     } catch (err) {
-      alert(err.response?.data?.errors || 'Failed to update portfolio item');
+      toast.error(err.response?.data?.errors || 'Failed to update portfolio item');
     }
   };
 
