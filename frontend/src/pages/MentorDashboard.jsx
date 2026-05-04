@@ -11,6 +11,7 @@ export default function MentorDashboard() {
   const [assignedStudents, setAssignedStudents] = useState([]);
   const [pendingReviews, setPendingReviews] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [reviewHistory, setReviewHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -30,10 +31,14 @@ export default function MentorDashboard() {
       if (studentsRes.data.success) setAssignedStudents(studentsRes.data.data);
       if (reviewsRes.data.success) setPendingReviews(reviewsRes.data.data);
 
-      // Analytics — non-critical
+      // Analytics + review history — non-critical
       try {
         const analyticsRes = await analyticsService.getMentorAnalytics();
         if (analyticsRes.data.success) setAnalytics(analyticsRes.data.data);
+      } catch (_) {}
+      try {
+        const historyRes = await mentorService.getReviewHistory();
+        if (historyRes.data.success) setReviewHistory(historyRes.data.data);
       } catch (_) {}
     } catch (err) {
       setError('Failed to load dashboard data');
@@ -221,6 +226,56 @@ export default function MentorDashboard() {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          </div>
+
+          {/* Review History Panel */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-semibold text-gray-900">✅ Recent Evaluations</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{reviewHistory.length} completed review{reviewHistory.length !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {loading ? (
+                [...Array(3)].map((_, i) => (
+                  <div key={i} className="px-6 py-4">
+                    <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4 mb-2" />
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                  </div>
+                ))
+              ) : reviewHistory.length === 0 ? (
+                <div className="px-6 py-8 text-center">
+                  <div className="text-2xl mb-2">📭</div>
+                  <p className="text-sm text-gray-500">No evaluations submitted yet.</p>
+                </div>
+              ) : (
+                reviewHistory.slice(0, 6).map(ev => {
+                  const scoreColor = ev.final_score >= 80 ? 'text-green-600 bg-green-50' : ev.final_score >= 60 ? 'text-yellow-600 bg-yellow-50' : 'text-red-600 bg-red-50';
+                  return (
+                    <div key={ev.evaluation_id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate text-sm">{ev.task_title}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {ev.student_name}
+                            {ev.evaluated_at && (
+                              <span> · {new Date(ev.evaluated_at).toLocaleDateString()}</span>
+                            )}
+                          </p>
+                        </div>
+                        <div className="ml-3 flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-gray-400 hidden sm:inline">{ev.task_domain}</span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${scoreColor}`}>
+                            {ev.final_score?.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

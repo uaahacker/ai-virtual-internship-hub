@@ -432,7 +432,7 @@ class MentorEvaluateTaskView(APIView):
         except TaskEvaluation.DoesNotExist:
             return Response({'success': False, 'error': 'Evaluation not found.'}, status=status.HTTP_404_NOT_FOUND)
         assignment = evaluation.task_completion.task_assignment
-        if assignment.student.studentprofile.mentor_assigned != request.user:
+        if assignment.student.student_profile.mentor_assigned != request.user:
             return Response({'success': False, 'error': 'This student is not assigned to you.'}, status=status.HTTP_403_FORBIDDEN)
         serializer = TaskEvaluationUpdateSerializer(data=request.data)
         if not serializer.is_valid():
@@ -449,8 +449,11 @@ class MentorEvaluateTaskView(APIView):
         evaluation.evaluated_at = timezone.now()
         evaluation.status = 'evaluated'
         evaluation.save()
+        # Mark the task assignment as reviewed so it leaves the pending queue
+        assignment.mentor_review_status = 'reviewed'
+        assignment.save(update_fields=['mentor_review_status'])
         try:
-            portfolio_item = PortfolioService.create_portfolio_item(evaluation)
+            PortfolioService.create_portfolio_item(evaluation)
         except Exception as e:
             print(f"Error creating portfolio item: {str(e)}")
         result_serializer = TaskEvaluationSerializer(evaluation)

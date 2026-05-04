@@ -437,18 +437,38 @@ class MentorPendingReviewsView(APIView):
             mentor_review_status='requested',
         ).select_related('student', 'task')
 
-        result = [
-            {
+        result = []
+        for ta in pending_qs:
+            # Traverse TaskAssignment → TaskCompletion → TaskEvaluation
+            evaluation_id = None
+            mcq_score = None
+            reflective_text = ''
+            try:
+                completion = ta.completion
+                reflective_text = completion.reflective_text or ''
+                try:
+                    evaluation_id = completion.evaluation.id
+                    mcq_score = completion.evaluation.mcq_score
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+            result.append({
                 'id': ta.id,
                 'student__name': ta.student.name,
+                'student__id': ta.student.id,
                 'task__title': ta.task.title,
                 'task__domain': ta.task.domain,
+                'task__description': ta.task.description,
+                'task__difficulty': ta.task.difficulty,
                 'status': ta.status,
                 'progress_percentage': ta.progress_percentage,
                 'completed_at': ta.completed_at.isoformat() if ta.completed_at else None,
-            }
-            for ta in pending_qs
-        ]
+                'evaluation_id': evaluation_id,
+                'mcq_score': mcq_score,
+                'reflective_text': reflective_text,
+            })
 
         return Response({'success': True, 'data': result})
 
@@ -507,6 +527,50 @@ class MentorSubmitReviewView(APIView):
                 'mentor_review_status': assignment.mentor_review_status,
             }
         })
+
+
+class MentorReviewHistoryView(APIView):
+    """
+    GET /api/mentor/review-history/
+    Returns the 20 most recent task evaluations submitted by this mentor.
+    """
+    permission_classes = [IsAuthenticated, IsMentor]
+
+    def get(self, request):
+        from apps.tasks.models import TaskEvaluation
+
+        evaluations = (
+            TaskEvaluation.objects.filter(
+                evaluated_by=request.user,
+                status='evaluated',
+            )
+            .select_related(
+                'task_completion__task_assignment__task',
+                'task_completion__task_assignment__student',
+            )
+            .order_by('-evaluated_at')[:20]
+        )
+
+        result = []
+        for ev in evaluations:
+            try:
+                ta = ev.task_completion.task_assignment
+                result.append({
+                    'evaluation_id': ev.id,
+                    'assignment_id': ta.id,
+                    'task_title': ta.task.title,
+                    'task_domain': ta.task.domain,
+                    'student_name': ta.student.name,
+                    'student_id': ta.student.id,
+                    'mcq_score': ev.mcq_score,
+                    'mentor_score': ev.mentor_score,
+                    'final_score': ev.final_score,
+                    'evaluated_at': ev.evaluated_at.isoformat() if ev.evaluated_at else None,
+                })
+            except Exception:
+                continue
+
+        return Response({'success': True, 'data': result})
 
 
 class MentorAvailableStudentsView(APIView):

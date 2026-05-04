@@ -124,6 +124,7 @@ export const mentorService = {
     `/auth/mentor/reviews/${assignmentId}/submit/`,
     data
   ),
+  getReviewHistory: () => api.get('/auth/mentor/review-history/'),
   autoAssignMentors: () => api.post('/auth/mentor/auto-assign/'),
 
   // Student assignment

@@ -244,24 +244,26 @@ class PortfolioService:
         )
         skills_demonstrated = list(task.required_skills or [])
 
-        portfolio_item = PortfolioItem.objects.create(
-            portfolio=portfolio,
+        portfolio_item, _ = PortfolioItem.objects.update_or_create(
             task_evaluation=task_evaluation,
-            task_title=task.title,
-            task_domain=task.domain,
-            task_difficulty=task.difficulty,
-            task_type=task.task_type,
-            completion_date=completion.completed_at,
-            evaluation_date=task_evaluation.evaluated_at or timezone.now(),
-            mcq_score=task_evaluation.mcq_score,
-            mentor_score=task_evaluation.mentor_score,
-            final_score=task_evaluation.final_score,
-            skills_demonstrated=skills_demonstrated,
-            student_reflection=completion.reflective_text,
-            project_summary=project_summary,
-            mentor_feedback_summary=mentor_feedback_summary,
-            strengths_summary=strengths_summary,
-            display_order=portfolio.total_items,
+            defaults=dict(
+                portfolio=portfolio,
+                task_title=task.title,
+                task_domain=task.domain,
+                task_difficulty=task.difficulty,
+                task_type=task.task_type,
+                completion_date=completion.completed_at,
+                evaluation_date=task_evaluation.evaluated_at or timezone.now(),
+                mcq_score=task_evaluation.mcq_score,
+                mentor_score=task_evaluation.mentor_score,
+                final_score=task_evaluation.final_score,
+                skills_demonstrated=skills_demonstrated,
+                student_reflection=completion.reflective_text,
+                project_summary=project_summary,
+                mentor_feedback_summary=mentor_feedback_summary,
+                strengths_summary=strengths_summary,
+                display_order=portfolio.total_items,
+            ),
         )
         PortfolioService.update_portfolio_stats(portfolio)
         return portfolio_item
