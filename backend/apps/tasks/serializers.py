@@ -307,36 +307,67 @@ class TaskEvaluationUpdateSerializer(serializers.Serializer):
 
 class PortfolioItemSerializer(serializers.ModelSerializer):
     """Serializer for PortfolioItem with all details."""
+    grade = serializers.SerializerMethodField()
 
     class Meta:
         model = PortfolioItem
         fields = [
             'id', 'portfolio', 'task_title', 'task_domain', 'task_difficulty',
             'task_type', 'completion_date', 'evaluation_date', 'mcq_score',
-            'mentor_score', 'final_score', 'skills_demonstrated',
+            'mentor_score', 'final_score', 'grade', 'skills_demonstrated',
             'student_reflection', 'project_summary', 'mentor_feedback_summary',
             'strengths_summary', 'is_featured', 'display_order', 'created_at',
         ]
         read_only_fields = [
             'id', 'portfolio', 'completion_date', 'evaluation_date',
-            'mcq_score', 'mentor_score', 'final_score', 'created_at',
+            'mcq_score', 'mentor_score', 'final_score', 'grade', 'created_at',
             'project_summary', 'mentor_feedback_summary', 'strengths_summary',
         ]
+
+    def get_grade(self, obj):
+        score = obj.final_score or 0
+        if score >= 90:
+            return 'Distinction'
+        elif score >= 80:
+            return 'A'
+        elif score >= 70:
+            return 'B'
+        elif score >= 60:
+            return 'C'
+        return 'D'
 
 
 class PortfolioItemDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for single portfolio item display."""
+    grade = serializers.SerializerMethodField()
 
     class Meta:
         model = PortfolioItem
         fields = [
             'id', 'task_title', 'task_domain', 'task_difficulty', 'task_type',
             'completion_date', 'evaluation_date', 'mcq_score', 'mentor_score',
-            'final_score', 'skills_demonstrated', 'student_reflection',
+            'final_score', 'grade', 'skills_demonstrated', 'student_reflection',
             'project_summary', 'mentor_feedback_summary', 'strengths_summary',
             'is_featured', 'display_order',
         ]
-        read_only_fields = fields
+        read_only_fields = [
+            'id', 'task_title', 'task_domain', 'task_difficulty', 'task_type',
+            'completion_date', 'evaluation_date', 'mcq_score', 'mentor_score',
+            'final_score', 'grade', 'skills_demonstrated', 'project_summary',
+            'mentor_feedback_summary', 'strengths_summary',
+        ]
+
+    def get_grade(self, obj):
+        score = obj.final_score or 0
+        if score >= 90:
+            return 'Distinction'
+        elif score >= 80:
+            return 'A'
+        elif score >= 70:
+            return 'B'
+        elif score >= 60:
+            return 'C'
+        return 'D'
 
 
 class PortfolioItemCreateSerializer(serializers.Serializer):
@@ -365,20 +396,26 @@ class PortfolioSerializer(serializers.ModelSerializer):
 
 
 class PortfolioDetailSerializer(serializers.ModelSerializer):
-    """Detailed portfolio serializer with all items."""
+    """Detailed portfolio serializer with all items and computed overview."""
     student_name = serializers.CharField(source='user.name', read_only=True)
     items = PortfolioItemSerializer(many=True, read_only=True)
+    overview = serializers.SerializerMethodField()
 
     class Meta:
         model = Portfolio
         fields = [
             'id', 'user', 'student_name', 'title', 'bio', 'is_public',
-            'total_items', 'average_score', 'items', 'created_at', 'updated_at',
+            'total_items', 'average_score', 'overview', 'items',
+            'created_at', 'updated_at',
         ]
         read_only_fields = [
             'id', 'user', 'student_name', 'total_items', 'average_score',
-            'items', 'created_at', 'updated_at',
+            'overview', 'items', 'created_at', 'updated_at',
         ]
+
+    def get_overview(self, obj):
+        from .portfolio_service import PortfolioService
+        return PortfolioService.generate_portfolio_overview(obj)
 
 
 class PortfolioUpdateSerializer(serializers.ModelSerializer):

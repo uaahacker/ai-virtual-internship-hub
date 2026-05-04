@@ -539,7 +539,8 @@ class PortfolioStatsView(APIView):
         if portfolio.user != request.user and not portfolio.is_public:
             return Response({'success': False, 'message': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
         stats = PortfolioService.get_portfolio_stats(portfolio)
-        return Response({'success': True, 'data': stats})
+        overview = PortfolioService.generate_portfolio_overview(portfolio)
+        return Response({'success': True, 'data': {**stats, 'overview': overview}})
 
 
 class ExportPortfolioView(APIView):
