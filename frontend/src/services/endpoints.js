@@ -126,6 +126,9 @@ export const analyticsService = {
 
   // Cluster overview (admin)
   getClusterOverview: () => api.get('/tasks/analytics/clusters/'),
+
+  // Domain prediction (student)
+  getDomainPredictions: () => api.get('/tasks/analytics/domain-prediction/'),
 };
 
 export const notificationService = {

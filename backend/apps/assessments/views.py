@@ -17,7 +17,7 @@ from .serializers import (
     AttemptResultSerializer,
 )
 from .recommendation import generate_recommendation, calculate_performance_breakdown
-from .nlp_feedback import generate_feedback
+from .nlp_feedback import generate_feedback, generate_structured_feedback
 from .evaluation_engine import evaluate as run_evaluation
 from apps.tasks.ml_engine import StudentClusterer
 
@@ -174,17 +174,34 @@ class SubmitAssessmentView(APIView):
         if previous_attempts.exists():
             previous_percentage = float(previous_attempts.first().percentage)
 
-        nlp_feedback = generate_feedback(
+        # Fetch cluster context for richer feedback
+        _cluster_label = 'Explorer'
+        _completed_tasks = 0
+        try:
+            _sp = request.user.student_profile
+            _cluster_label = _sp.cluster_label or 'Explorer'
+            _completed_tasks = _sp.completed_tasks_count or 0
+        except Exception:
+            pass
+
+        # Generate structured NLP feedback (local, no external API)
+        nlp_feedback = generate_structured_feedback(
             domain=assessment.domain,
             percentage=percentage,
             skill_level=skill_level,
             correct_count=correct,
             total_count=total,
+            readiness_level=eval_result['readiness_level'],
+            suggested_task_type=eval_result['recommended_task_type'],
             strengths=eval_result['strength_tags'],
             weaknesses=eval_result['weakness_tags'],
             improvement_areas=next_steps,
+            concept_scores=eval_result['concept_scores'],
             attempt_number=attempt_number,
             previous_percentage=previous_percentage,
+            improvement_delta=eval_result['improvement_delta'],
+            cluster_label=_cluster_label,
+            completed_tasks_count=_completed_tasks,
         )
 
         # 5) Persist attempt with all structured evaluation fields
@@ -208,6 +225,7 @@ class SubmitAssessmentView(APIView):
             skill_profile_vector=eval_result['skill_profile_vector'],
             improvement_delta=eval_result['improvement_delta'],
             recommended_task_type=eval_result['recommended_task_type'],
+            feedback=nlp_feedback,
         )
 
         # 5.1) Update student cluster (async-safe — must not block submission)
@@ -226,7 +244,7 @@ class SubmitAssessmentView(APIView):
         # 6) Return result
         result = AttemptResultSerializer(attempt).data
         result['recommendation'] = recommendation
-        result['feedback'] = nlp_feedback
+        # feedback is already inside result (from serializer)
 
         return Response(
             {
@@ -257,6 +275,23 @@ class AttemptDetailView(APIView):
         # Re-attach recommendation from stored data
         if attempt.recommended_domains:
             result['recommendation'] = attempt.recommended_domains[0]
+        # Regenerate structured feedback if not yet stored (old attempts)
+        if not result.get('feedback'):
+            try:
+                result['feedback'] = generate_structured_feedback(
+                    domain=attempt.assessment.domain,
+                    percentage=float(attempt.percentage),
+                    skill_level=attempt.skill_level,
+                    correct_count=attempt.score,
+                    total_count=attempt.total_questions,
+                    readiness_level=attempt.readiness_level,
+                    suggested_task_type=attempt.recommended_task_type,
+                    strengths=attempt.strengths,
+                    weaknesses=attempt.weaknesses,
+                    concept_scores=attempt.concept_scores or {},
+                )
+            except Exception:
+                pass
         return Response({'success': True, 'data': result})
 
 

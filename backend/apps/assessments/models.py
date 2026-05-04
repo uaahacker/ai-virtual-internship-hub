@@ -199,6 +199,15 @@ class AssessmentAttempt(models.Model):
         default='practice',
         help_text='Recommended task type based on readiness level',
     )
+    # NLP-generated structured feedback (generated locally, stored for dashboard access)
+    feedback = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Structured feedback dict: {summary, strength, weakness, recommendation, '
+            'suggested_task_type, tone, cluster_insight, mentor_insight, full_text}'
+        ),
+    )
     attempted_at = models.DateTimeField(default=timezone.now)
 
     class Meta:

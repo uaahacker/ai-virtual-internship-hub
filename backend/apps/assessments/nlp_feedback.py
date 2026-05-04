@@ -295,6 +295,316 @@ def generate_feedback(
     return ' '.join(sentences)
 
 
+# ─────────────────────────────────────────────
+# Domain-specific vocabulary
+# ─────────────────────────────────────────────
+
+_DOMAIN_VERBS = {
+    'Graphic Design':     ('design', 'create visual assets', 'apply design principles'),
+    'Content Writing':    ('write', 'craft compelling content', 'communicate clearly'),
+    'Programming':        ('code', 'build software', 'solve problems algorithmically'),
+    'Freelancing':        ('manage client work', 'deliver projects', 'communicate professionally'),
+    'E-Commerce':         ('operate online stores', 'optimise conversions', 'manage product listings'),
+    'QuickBooks':         ('manage accounts', 'record financial data', 'prepare reports'),
+    'AutoCAD':            ('draft technical drawings', 'model structures', 'produce CAD designs'),
+    'Data Analytics':     ('analyse data', 'extract insights', 'visualise findings'),
+    'Digital Marketing':  ('run campaigns', 'grow online presence', 'analyse performance metrics'),
+    'WordPress':          ('build websites', 'customise themes', 'manage WordPress sites'),
+}
+
+_CLUSTER_PHRASES = {
+    'Explorer': (
+        'As someone early in your learning journey, every assessment you complete builds '
+        'critical foundations for the domains ahead.'
+    ),
+    'Developing': (
+        'Your progress puts you in the Developing cluster — you are building consistent skills '
+        'across multiple areas.'
+    ),
+    'Competent': (
+        'You are performing at a Competent level overall, which means you are ready to take on '
+        'practical, real-world projects.'
+    ),
+    'Expert': (
+        'Your performance places you in the Expert cluster — you are well-positioned for advanced '
+        'freelancing and leadership roles.'
+    ),
+}
+
+_TASK_TYPE_GUIDANCE = {
+    'practice': 'Working through structured practice exercises will reinforce the concepts tested here.',
+    'project':  'Taking on a guided project in {domain} will help you apply these skills in a practical context.',
+    'challenge': 'You are ready for advanced challenge tasks in {domain} — push your boundaries further.',
+}
+
+
+# ─────────────────────────────────────────────
+# Mentor notes keyword extractor
+# ─────────────────────────────────────────────
+
+_STOP_WORDS = {
+    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+    'should', 'may', 'might', 'shall', 'can', 'need', 'dare', 'ought',
+    'and', 'but', 'or', 'nor', 'for', 'yet', 'so', 'although', 'because',
+    'since', 'while', 'after', 'before', 'when', 'where', 'which', 'who',
+    'that', 'this', 'these', 'those', 'it', 'its', 'of', 'to', 'in', 'on',
+    'at', 'by', 'from', 'with', 'as', 'into', 'through', 'during', 'about',
+    'up', 'down', 'out', 'off', 'over', 'then', 'your', 'you', 'student',
+    'work', 'task', 'very', 'good', 'nice', 'well', 'also', 'not', 'no',
+}
+
+
+def _extract_mentor_keywords(notes: str, n: int = 3) -> List[str]:
+    """
+    Extract the n most meaningful words from mentor notes using
+    simple frequency filtering (no external NLP library needed).
+    """
+    import re
+    tokens = re.findall(r'[a-z]{4,}', notes.lower())
+    freq: dict = {}
+    for t in tokens:
+        if t not in _STOP_WORDS:
+            freq[t] = freq.get(t, 0) + 1
+    ranked = sorted(freq, key=lambda w: -freq[w])
+    return ranked[:n]
+
+
+def _mentor_sentence(notes: str, domain: str) -> Optional[str]:
+    """
+    Build a single natural sentence referencing key mentor feedback keywords.
+    Returns None if notes are too short to extract meaningful signal.
+    """
+    if not notes or len(notes.strip()) < 15:
+        return None
+
+    keywords = _extract_mentor_keywords(notes, n=3)
+    if not keywords:
+        return None
+
+    # Detect overall sentiment via simple keyword presence
+    praise_words = {'excellent', 'great', 'outstanding', 'impressive', 'strong',
+                    'good', 'well', 'fantastic', 'brilliant', 'solid'}
+    concern_words = {'improve', 'weak', 'missing', 'incorrect', 'incomplete',
+                     'revise', 'redo', 'wrong', 'lacking', 'needs'}
+
+    words_lower = set(notes.lower().split())
+    if words_lower & praise_words:
+        topic = keywords[0].replace('_', ' ')
+        return (
+            f"Your mentor highlighted positive progress, particularly around {topic} — "
+            "this aligns with your assessment results."
+        )
+    elif words_lower & concern_words:
+        topic = ', '.join(keywords[:2]).replace('_', ' ')
+        return (
+            f"Your mentor's notes suggest focusing on {topic} — "
+            "addressing these will strengthen your overall {domain} proficiency."
+        ).replace('{domain}', domain)
+    else:
+        # Neutral — just reference the topic
+        topic = keywords[0].replace('_', ' ')
+        return f"Your mentor noted aspects related to {topic} as worth paying attention to."
+
+
+# ─────────────────────────────────────────────
+# Structured feedback generator
+# ─────────────────────────────────────────────
+
+def generate_structured_feedback(
+    domain: str,
+    percentage: float,
+    skill_level: str,
+    correct_count: int,
+    total_count: int,
+    readiness_level: str = 'Novice',
+    suggested_task_type: str = 'practice',
+    strengths: Optional[List[str]] = None,
+    weaknesses: Optional[List[str]] = None,
+    improvement_areas: Optional[List[str]] = None,
+    concept_scores: Optional[dict] = None,
+    attempt_number: int = 1,
+    previous_percentage: Optional[float] = None,
+    improvement_delta: Optional[float] = None,
+    cluster_label: str = 'Explorer',
+    completed_tasks_count: int = 0,
+    mentor_notes: str = '',
+) -> dict:
+    """
+    Generate a structured feedback object from assessment result data.
+
+    Returns a dict with these keys:
+        summary          - 1-2 sentence performance overview
+        strength         - key strength sentence
+        weakness         - key weakness / improvement sentence
+        recommendation   - actionable next-step recommendation
+        suggested_task_type - 'practice' | 'project' | 'challenge'
+        tone             - 'positive' | 'encouraging' | 'constructive'
+        cluster_insight  - sentence referencing cluster context
+        mentor_insight   - sentence derived from mentor notes (or None)
+        full_text        - complete feedback paragraph (all parts joined)
+    """
+    strengths         = strengths or []
+    weaknesses        = weaknesses or []
+    improvement_areas = improvement_areas or []
+    concept_scores    = concept_scores or {}
+
+    seed = int(percentage) + len(domain) + correct_count * 7
+
+    # ── Tone ──────────────────────────────────────────────────────────────
+    if percentage >= 70:
+        tone = 'positive'
+    elif percentage >= 45:
+        tone = 'encouraging'
+    else:
+        tone = 'constructive'
+
+    # ── 1. Summary ─────────────────────────────────────────────────────────
+    strong_adj       = _vary('excellent',   'a', 'excellent')
+    impressive_adj   = _vary('impressive',  'a', 'impressive')
+    developing_adj   = _vary('developing',  'v', 'developing')
+    steady_adj       = _vary('steady',      'a', 'steady')
+    positive_adj     = _vary('significant', 'a', 'significant')
+
+    if skill_level == 'Advanced':
+        tpl    = _pick(_OPENING_ADVANCED, seed)
+        summary = tpl.format(
+            domain=domain, pct=percentage,
+            strong_adj=strong_adj, impressive_adj=impressive_adj,
+        )
+    elif skill_level == 'Intermediate':
+        tpl    = _pick(_OPENING_INTERMEDIATE, seed)
+        summary = tpl.format(
+            domain=domain, pct=percentage,
+            developing_adj=developing_adj, steady_adj=steady_adj,
+        )
+    else:
+        tpl    = _pick(_OPENING_BEGINNER, seed)
+        summary = tpl.format(
+            domain=domain, pct=percentage, positive_adj=positive_adj,
+        )
+
+    # Add progress note to summary if available
+    delta = improvement_delta
+    if delta is None and previous_percentage is not None and attempt_number > 1:
+        delta = percentage - previous_percentage
+
+    if delta is not None and attempt_number > 1:
+        if delta > 2:
+            prog = _pick(_PROGRESS_IMPROVED, seed)
+            summary += prog.format(delta=abs(delta))
+        elif delta < -2:
+            summary += _pick(_PROGRESS_DECLINED, seed)
+        else:
+            summary += _pick(_PROGRESS_SAME, seed)
+
+    # ── 2. Strength sentence ───────────────────────────────────────────────
+    # Prefer best concept from concept_scores over generic strength tag
+    best_concept = None
+    if concept_scores:
+        best_concept = max(
+            concept_scores,
+            key=lambda c: concept_scores[c].get('score_pct', 0),
+        )
+        best_score = concept_scores[best_concept]['score_pct']
+        # Only use if meaningful
+        if best_score < 50:
+            best_concept = None
+
+    strength_source = (
+        best_concept
+        or (strengths[0] if strengths else None)
+        or f'{domain} fundamentals'
+    )
+    str_tpl     = _pick(_STRENGTH_SENTENCES, seed + 1)
+    confident_adj = _vary('confident', 'a', 'confident')
+    strength_sentence = str_tpl.format(
+        strength=strength_source,
+        strong_adj=strong_adj,
+        confident_adj=confident_adj,
+    )
+
+    # ── 3. Weakness / improvement sentence ────────────────────────────────
+    worst_concept = None
+    if concept_scores:
+        worst_concept = min(
+            concept_scores,
+            key=lambda c: concept_scores[c].get('score_pct', 100),
+        )
+        worst_score = concept_scores[worst_concept]['score_pct']
+        # Only highlight as a weakness if genuinely below threshold
+        if worst_score >= 60:
+            worst_concept = None
+
+    weakness_source = (
+        worst_concept
+        or (weaknesses[0] if weaknesses else None)
+    )
+    if weakness_source:
+        weak_tpl = _pick(_WEAKNESS_SENTENCES, seed + 2)
+        challenging_adj = _vary('challenging', 'a', 'challenging')
+        weakness_sentence = weak_tpl.format(
+            weakness=weakness_source,
+            challenging_adj=challenging_adj,
+        )
+    elif improvement_areas:
+        weakness_sentence = f"Priority focus: {improvement_areas[0]}."
+    else:
+        weakness_sentence = (
+            f"Continue exploring advanced {domain} topics to maintain and grow your edge."
+        )
+
+    # ── 4. Recommendation ─────────────────────────────────────────────────
+    ready_adj    = _vary('ready',    'a', 'ready')
+    targeted_adj = _vary('targeted', 'a', 'targeted')
+
+    if skill_level == 'Advanced':
+        rec_closing = _pick(_CLOSING_ADVANCED, seed).format(
+            domain=domain, ready_adj=ready_adj,
+        )
+    elif skill_level == 'Intermediate':
+        rec_closing = _pick(_CLOSING_INTERMEDIATE, seed).format(
+            domain=domain, targeted_adj=targeted_adj,
+        )
+    else:
+        rec_closing = _pick(_CLOSING_BEGINNER, seed).format(domain=domain)
+
+    # Append task-type guidance
+    task_guidance = _TASK_TYPE_GUIDANCE.get(suggested_task_type, '').format(domain=domain)
+    recommendation = f"{rec_closing} {task_guidance}".strip()
+
+    # ── 5. Cluster insight ─────────────────────────────────────────────────
+    cluster_insight = _CLUSTER_PHRASES.get(cluster_label, _CLUSTER_PHRASES['Explorer'])
+
+    # Add completed_tasks context if meaningful
+    if completed_tasks_count >= 5:
+        cluster_insight += (
+            f" Having completed {completed_tasks_count} tasks, "
+            "you are building practical experience alongside your assessment results."
+        )
+
+    # ── 6. Mentor insight ──────────────────────────────────────────────────
+    mentor_insight = _mentor_sentence(mentor_notes, domain) if mentor_notes else None
+
+    # ── Assemble full text ─────────────────────────────────────────────────
+    parts = [summary, strength_sentence, weakness_sentence, recommendation]
+    if mentor_insight:
+        parts.append(mentor_insight)
+    full_text = ' '.join(parts)
+
+    return {
+        'summary':            summary,
+        'strength':           strength_sentence,
+        'weakness':           weakness_sentence,
+        'recommendation':     recommendation,
+        'suggested_task_type': suggested_task_type,
+        'tone':               tone,
+        'cluster_insight':    cluster_insight,
+        'mentor_insight':     mentor_insight,
+        'full_text':          full_text,
+    }
+
+
 def generate_task_feedback(
     domain: str,
     mcq_score: float,

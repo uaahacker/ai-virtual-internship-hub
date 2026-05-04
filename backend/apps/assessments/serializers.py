@@ -76,6 +76,8 @@ class AttemptResultSerializer(serializers.ModelSerializer):
             'domain_score', 'readiness_level',
             'concept_scores', 'skill_profile_vector',
             'improvement_delta', 'recommended_task_type',
+            # NLP feedback
+            'feedback',
         ]
         read_only_fields = fields
 

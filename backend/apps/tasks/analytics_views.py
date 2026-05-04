@@ -11,6 +11,30 @@ from apps.core.permissions import IsStudent, IsMentor, IsAdmin
 from .analytics import StudentAnalyticsService, MentorAnalyticsService, AdminAnalyticsService
 
 
+class DomainPredictionView(APIView):
+    """
+    Predict the best freelancing domain(s) for the current student.
+    GET /api/tasks/analytics/domain-prediction/
+
+    Returns a prediction from the trained RandomForest model when available,
+    or falls back to the heuristic recency-weighted predictor.
+    """
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def get(self, request):
+        try:
+            from apps.tasks.domain_predictor import DomainPredictorML
+            result = DomainPredictorML.predict(request.user)
+            return Response({'success': True, 'data': result})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'success': False, 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 class StudentAnalyticsView(APIView):
     """
     Endpoint for retrieving student analytics data.

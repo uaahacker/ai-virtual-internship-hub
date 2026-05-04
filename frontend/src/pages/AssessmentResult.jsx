@@ -12,7 +12,89 @@ import {
   FiTarget,
   FiChevronDown,
   FiChevronUp,
+  FiMessageSquare,
+  FiZap,
 } from 'react-icons/fi';
+
+// ── NLP Feedback Card ─────────────────────────────────────────────────────────
+function FeedbackCard({ feedback }) {
+  if (!feedback || !feedback.summary) return null;
+
+  const toneConfig = {
+    positive:     { border: 'border-green-200',  bg: 'bg-green-50',  accent: 'bg-green-500',  text: 'text-green-700'  },
+    encouraging:  { border: 'border-blue-200',   bg: 'bg-blue-50',   accent: 'bg-blue-500',   text: 'text-blue-700'   },
+    constructive: { border: 'border-orange-200', bg: 'bg-orange-50', accent: 'bg-orange-500', text: 'text-orange-700' },
+  };
+  const tc = toneConfig[feedback.tone] || toneConfig.encouraging;
+
+  const taskTypeLabel = {
+    practice:  '📚 Practice Task',
+    project:   '🛠 Guided Project',
+    challenge: '🏆 Challenge Task',
+  };
+
+  return (
+    <div className={`rounded-xl border ${tc.border} ${tc.bg} p-6 mb-6`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <FiMessageSquare className={tc.text} size={20} />
+          Performance Feedback
+        </h2>
+        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${tc.bg} ${tc.text} border ${tc.border}`}>
+          {taskTypeLabel[feedback.suggested_task_type] || 'Practice Task'}
+        </span>
+      </div>
+
+      {/* Summary */}
+      <p className="text-gray-800 leading-relaxed mb-4 text-sm font-medium">
+        {feedback.summary}
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {/* Strength */}
+        <div className="bg-white rounded-lg border border-green-100 p-4">
+          <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+            <FiCheckCircle size={12} /> Key Strength
+          </p>
+          <p className="text-sm text-gray-700 leading-snug">{feedback.strength}</p>
+        </div>
+
+        {/* Weakness */}
+        <div className="bg-white rounded-lg border border-orange-100 p-4">
+          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+            <FiAlertCircle size={12} /> Area to Improve
+          </p>
+          <p className="text-sm text-gray-700 leading-snug">{feedback.weakness}</p>
+        </div>
+      </div>
+
+      {/* Recommendation */}
+      <div className="bg-white rounded-lg border border-blue-100 p-4 mb-3">
+        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+          <FiTarget size={12} /> Next Step
+        </p>
+        <p className="text-sm text-gray-700 leading-snug">{feedback.recommendation}</p>
+      </div>
+
+      {/* Cluster insight */}
+      {feedback.cluster_insight && (
+        <div className="flex items-start gap-2 text-xs text-gray-500 italic">
+          <FiZap size={12} className="mt-0.5 shrink-0 text-indigo-400" />
+          <span>{feedback.cluster_insight}</span>
+        </div>
+      )}
+
+      {/* Mentor insight */}
+      {feedback.mentor_insight && (
+        <div className="flex items-start gap-2 text-xs text-gray-500 italic mt-2">
+          <span className="shrink-0">👨‍🏫</span>
+          <span>{feedback.mentor_insight}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AssessmentResult() {
   const { attemptId } = useParams();
@@ -148,6 +230,9 @@ export default function AssessmentResult() {
           </div>
         </div>
       </div>
+
+      {/* NLP Feedback Card */}
+      <FeedbackCard feedback={result.feedback} />
 
       {/* Two Column Layout for Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

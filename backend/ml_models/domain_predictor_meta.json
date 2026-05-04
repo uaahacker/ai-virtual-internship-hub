@@ -1,0 +1,32 @@
+{
+  "accuracy": 0.9558,
+  "n_samples": 905,
+  "feature_names": [
+    "score_Graphic_Design",
+    "score_Content_Writing",
+    "score_Programming",
+    "score_Freelancing",
+    "score_E-Commerce",
+    "score_QuickBooks",
+    "score_AutoCAD",
+    "score_Data_Analytics",
+    "score_Digital_Marketing",
+    "score_WordPress",
+    "completion_rate",
+    "improvement_trend",
+    "avg_task_mcq_score"
+  ],
+  "domains": [
+    "Graphic Design",
+    "Content Writing",
+    "Programming",
+    "Freelancing",
+    "E-Commerce",
+    "QuickBooks",
+    "AutoCAD",
+    "Data Analytics",
+    "Digital Marketing",
+    "WordPress"
+  ],
+  "trained_at": "2026-05-04T15:59:38.809956+00:00"
+}

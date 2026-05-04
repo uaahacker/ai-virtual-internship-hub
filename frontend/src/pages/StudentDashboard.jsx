@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import StudentProfileCard from '../components/StudentProfileCard';
 import { useAuth } from '../contexts/AuthContext';
-import { assessmentService, profileService, taskService } from '../services/endpoints';
+import { assessmentService, profileService, taskService, analyticsService } from '../services/endpoints';
 import { Card, CardHeader, CardBody, SectionCard, StatCard, Badge } from '../components/CardComponents';
 import { ProgressIndicator, CircularProgress, EmptyState } from '../components/ProgressAndUtilityComponents';
 
@@ -13,6 +13,7 @@ export default function StudentDashboard() {
   const [profile, setProfile] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [domainPrediction, setDomainPrediction] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -25,6 +26,10 @@ export default function StudentDashboard() {
         setAttempts(attemptsRes.data.data || []);
         setProfile(profileRes.data.data);
         setTasks(tasksRes.data.data || []);
+        // Load domain prediction in background (non-blocking)
+        analyticsService.getDomainPredictions()
+          .then(r => { if (r.data.success) setDomainPrediction(r.data.data); })
+          .catch(() => {});
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -279,6 +284,118 @@ export default function StudentDashboard() {
               )}
             </div>
           )}
+          {/* Domain Prediction Card */}
+          {domainPrediction && (
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-slate-900 text-sm">🔮 Best-Fit Domain</h3>
+                <span className="text-xs text-slate-400">
+                  {domainPrediction.method === 'ml' ? 'ML model' : 'Score-based'}
+                  {domainPrediction.model_accuracy != null &&
+                    ` · ${(domainPrediction.model_accuracy * 100).toFixed(0)}% acc`}
+                </span>
+              </div>
+
+              {domainPrediction.predicted_domain ? (
+                <>
+                  <p className="text-base font-bold text-slate-900 mb-0.5">
+                    {domainPrediction.predicted_domain}
+                  </p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex-1 bg-slate-100 rounded-full h-2">
+                      <div
+                        className="h-2 rounded-full bg-indigo-500"
+                        style={{ width: `${Math.round(domainPrediction.confidence * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-slate-600 w-10 text-right">
+                      {Math.round(domainPrediction.confidence * 100)}%
+                    </span>
+                  </div>
+
+                  {/* Top-3 distribution */}
+                  {domainPrediction.distribution?.slice(0, 4).map((item) => (
+                    <div key={item.domain} className="flex items-center gap-2 mb-1.5">
+                      <span className="text-xs text-slate-600 w-32 truncate">{item.domain}</span>
+                      <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                        <div
+                          className="h-1.5 rounded-full bg-indigo-300"
+                          style={{ width: `${Math.round(item.probability * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-400 w-8 text-right">
+                        {Math.round(item.probability * 100)}%
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Reasons */}
+                  {domainPrediction.reasons?.length > 0 && (
+                    <div className="mt-3 pt-2 border-t border-slate-100">
+                      <p className="text-xs font-medium text-slate-500 mb-1">Why this domain?</p>
+                      <ul className="space-y-1">
+                        {domainPrediction.reasons.slice(0, 2).map((reason, i) => (
+                          <li key={i} className="text-xs text-slate-600 flex gap-1.5">
+                            <span className="text-indigo-400 shrink-0">›</span>
+                            <span>{reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Complete domain assessments to unlock personalised predictions.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Latest Assessment Feedback Insight */}
+          {(() => {
+            const latestAttempt = attempts
+              .filter(a => a.feedback?.summary)
+              .sort((a, b) => new Date(b.attempted_at) - new Date(a.attempted_at))[0];
+            if (!latestAttempt) return null;
+            const fb = latestAttempt.feedback;
+            const toneColor = {
+              positive:     'border-green-200 bg-green-50',
+              encouraging:  'border-blue-200 bg-blue-50',
+              constructive: 'border-orange-200 bg-orange-50',
+            }[fb.tone] || 'border-slate-200 bg-slate-50';
+            const taskLabel = { practice: '📚 Practice', project: '🛠 Project', challenge: '🏆 Challenge' };
+            return (
+              <div className={`rounded-xl border ${toneColor} p-4 shadow-sm`}>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-slate-900 text-sm">💬 Latest Insight</h3>
+                  <span className="text-xs text-slate-400">
+                    {latestAttempt.assessment_domain}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700 leading-snug mb-2">{fb.summary}</p>
+                <div className="flex flex-col gap-1.5 mb-2">
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-green-500 text-xs shrink-0 mt-0.5">✓</span>
+                    <p className="text-xs text-slate-600 leading-snug">{fb.strength}</p>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-orange-400 text-xs shrink-0 mt-0.5">!</span>
+                    <p className="text-xs text-slate-600 leading-snug">{fb.weakness}</p>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-xs text-slate-500 italic truncate mr-2">
+                    {fb.recommendation?.split('.')[0]}.
+                  </span>
+                  <span className="text-xs font-medium text-slate-600 shrink-0">
+                    {taskLabel[fb.suggested_task_type] || '📚 Practice'}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Assessment CTA */}
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
             <CardBody className="text-center">

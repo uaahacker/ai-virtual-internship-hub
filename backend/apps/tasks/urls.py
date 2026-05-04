@@ -36,6 +36,7 @@ from .analytics_views import (
     MentorAnalyticsView,
     AdminAnalyticsView,
     ClusterOverviewView,
+    DomainPredictionView,
 )
 
 app_name = 'tasks'
@@ -78,4 +79,5 @@ urlpatterns = [
     path('analytics/mentor/', MentorAnalyticsView.as_view(), name='mentor-analytics'),
     path('analytics/admin/', AdminAnalyticsView.as_view(), name='admin-analytics'),
     path('analytics/clusters/', ClusterOverviewView.as_view(), name='cluster-overview'),
+    path('analytics/domain-prediction/', DomainPredictionView.as_view(), name='domain-prediction'),
 ]
