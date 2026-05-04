@@ -64,6 +64,54 @@ const MentorLoadTable = ({ mentors }) => (
   </div>
 );
 
+const ClusterDistributionCard = ({ clusters }) => {
+  if (!clusters || clusters.length === 0) return null;
+  const total = clusters.reduce((sum, c) => sum + c.count, 0);
+  const COLORS = {
+    Explorer:   { bar: 'bg-gray-400',   badge: 'bg-gray-100 text-gray-700'   },
+    Developing: { bar: 'bg-blue-400',   badge: 'bg-blue-100 text-blue-700'   },
+    Competent:  { bar: 'bg-green-400',  badge: 'bg-green-100 text-green-700' },
+    Expert:     { bar: 'bg-yellow-400', badge: 'bg-yellow-100 text-yellow-700' },
+  };
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <h3 className="text-lg font-semibold text-gray-900 mb-1">Student Cluster Distribution</h3>
+      <p className="text-sm text-gray-500 mb-4">How students are grouped by performance and skill pattern</p>
+      <div className="space-y-4">
+        {clusters.map((cluster) => {
+          const pct = total > 0 ? Math.round((cluster.count / total) * 100) : 0;
+          const colors = COLORS[cluster.label] || COLORS.Explorer;
+          return (
+            <div key={cluster.label}>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colors.badge}`}>
+                    {cluster.label}
+                  </span>
+                  <span className="text-sm text-gray-700 font-medium">{cluster.display_name}</span>
+                </div>
+                <div className="flex items-center gap-3 text-right">
+                  <span className="text-sm font-bold text-gray-900">{cluster.count} students</span>
+                  {cluster.avg_score > 0 && (
+                    <span className="text-xs text-gray-500">avg {cluster.avg_score}%</span>
+                  )}
+                </div>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full ${colors.bar}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">{pct}% of all students</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const AdminAnalyticsDashboard = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -186,6 +234,11 @@ const AdminAnalyticsDashboard = () => {
           <PopularDomainsTable domains={analytics.popular_domains} />
           <MentorLoadTable mentors={analytics.mentor_load_distribution} />
         </div>
+
+        {/* Cluster Distribution */}
+        {analytics.student_cluster_distribution?.length > 0 && (
+          <ClusterDistributionCard clusters={analytics.student_cluster_distribution} />
+        )}
       </div>
     </DashboardLayout>
   );

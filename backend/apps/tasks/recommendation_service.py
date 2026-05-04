@@ -178,6 +178,17 @@ class TaskRecommendationService:
         cf_scores = {r['task_id']: r for r in cf_results}
 
         recommendations = []
+
+        # Cluster domain affinity boost: if the task's domain matches the
+        # student's cluster-inferred dominant domain, award a small bonus
+        # (+3 pts, capped at 100) to nudge recommendations toward strengths.
+        cluster_dominant_domain = None
+        try:
+            summary = student.student_profile.cluster_summary or {}
+            cluster_dominant_domain = summary.get('dominant_domain')
+        except Exception:
+            pass
+
         for task in available_tasks:
             hybrid_score, explanation = compute_hybrid_score(
                 student=student,
@@ -185,6 +196,10 @@ class TaskRecommendationService:
                 student_vec=student_vec,
                 cf_scores=cf_scores,
             )
+
+            # Apply cluster affinity boost
+            if cluster_dominant_domain and task.domain == cluster_dominant_domain:
+                hybrid_score = min(100.0, hybrid_score + 3.0)
 
             cf_entry = cf_scores.get(task.id)
             structured = explain_recommendation(

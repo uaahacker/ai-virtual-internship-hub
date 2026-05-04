@@ -237,6 +237,48 @@ export default function StudentDashboard() {
 
         {/* Quick Access Cards - Right Section */}
         <div className="space-y-4">
+          {/* Your Learning Cluster */}
+          {profile && (
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-slate-900 text-sm">🎯 Your Learning Cluster</h3>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  profile.cluster_label === 'Expert'     ? 'bg-yellow-100 text-yellow-800' :
+                  profile.cluster_label === 'Competent'  ? 'bg-green-100 text-green-800'  :
+                  profile.cluster_label === 'Developing' ? 'bg-blue-100 text-blue-800'    :
+                                                           'bg-slate-100 text-slate-700'
+                }`}>
+                  {profile.cluster_label || 'Explorer'}
+                </span>
+              </div>
+              <p className="text-base font-bold text-slate-900 mb-1">
+                {profile.cluster_summary?.display_name || profile.cluster_label || 'Early Explorer'}
+              </p>
+              <p className="text-xs text-slate-600 mb-3">
+                {profile.cluster_summary?.description || 'Take your first assessment to build your learning profile.'}
+              </p>
+              {profile.cluster_summary?.avg_assessment_score > 0 && (
+                <div className="mb-2">
+                  <div className="flex justify-between text-xs text-slate-500 mb-1">
+                    <span>Avg Assessment Score</span>
+                    <span>{profile.cluster_summary.avg_assessment_score}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1.5">
+                    <div
+                      className="h-1.5 rounded-full bg-blue-500"
+                      style={{ width: `${Math.min(100, profile.cluster_summary.avg_assessment_score)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {profile.cluster_summary?.strengths?.length > 0 && (
+                <p className="text-xs text-slate-500 mt-2">
+                  <span className="font-medium">Strengths: </span>
+                  {profile.cluster_summary.strengths.join(', ')}
+                </p>
+              )}
+            </div>
+          )}
           {/* Assessment CTA */}
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
             <CardBody className="text-center">

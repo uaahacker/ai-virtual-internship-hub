@@ -192,6 +192,16 @@ export default function MentorDashboard() {
                               {student.pending_review_count} review{student.pending_review_count !== 1 ? 's' : ''}
                             </span>
                           )}
+                          {student.cluster_label && (
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                              student.cluster_label === 'Expert'     ? 'bg-yellow-100 text-yellow-700' :
+                              student.cluster_label === 'Competent'  ? 'bg-green-100 text-green-700'  :
+                              student.cluster_label === 'Developing' ? 'bg-blue-100 text-blue-700'    :
+                                                                       'bg-gray-100 text-gray-600'
+                            }`}>
+                              {student.cluster_display_name || student.cluster_label}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {student.strongest_domain || 'No domain yet'} · {student.completed_tasks_count} tasks done

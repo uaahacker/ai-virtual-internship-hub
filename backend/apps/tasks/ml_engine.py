@@ -493,14 +493,16 @@ class CollaborativeRecommender:
     """
     User-based collaborative filtering.
 
-    Builds a student × task interaction matrix from TaskMCQAttempt.mcq_score,
-    finds K most similar students to the target student (by domain-score
-    cosine similarity), and predicts scores for unseen tasks via weighted
-    average of neighbor scores.
-    """
+    Delegates to apps.tasks.collaborative_filtering which builds a rich
+    student × task interaction matrix from multiple behavioural signals:
+      - Task assignment status (accepted / in_progress / completed)
+      - MCQ quiz score (blended in when available)
+      - Mentor review outcome (approved / needs_revision)
+      - Domain engagement frequency
 
-    K_NEIGHBORS = 5
-    MIN_INTERACTIONS = 2  # minimum tasks a neighbour must have attempted
+    The public interface is unchanged so callers in recommendation_service.py
+    are not affected.
+    """
 
     @staticmethod
     def get_recommendations(
@@ -513,135 +515,246 @@ class CollaborativeRecommender:
         Generate collaborative recommendations for target_student.
 
         Returns:
-            List of dicts: [{task_id, predicted_score, neighbor_count, reason}]
+            List of dicts:
+            [{task_id, predicted_score, neighbor_count, reason, cf_debug}]
         """
-        from apps.tasks.models import TaskMCQAttempt, TaskAssignment
-        from apps.assessments.models import AssessmentAttempt
+        from apps.tasks.collaborative_filtering import get_collaborative_recommendations
 
-        # ── Build interaction data ──────────────────────────────────────────
-        # {student_id: {task_id: mcq_score}}
-        interaction_rows = TaskMCQAttempt.objects.select_related(
-            'task_completion__task_assignment__student',
-            'task_completion__task_assignment__task',
-        ).values(
-            'task_completion__task_assignment__student_id',
-            'task_completion__task_assignment__task_id',
-            'mcq_score',
+        # Filter out already-assigned tasks before passing to CF
+        filtered_ids = [
+            tid for tid in available_task_ids
+            if tid not in already_assigned_ids
+        ]
+        return get_collaborative_recommendations(
+            target_student=target_student,
+            available_task_ids=filtered_ids,
+            limit=limit,
         )
-
-        interactions: Dict[int, Dict[int, float]] = {}
-        for row in interaction_rows:
-            sid = row['task_completion__task_assignment__student_id']
-            tid = row['task_completion__task_assignment__task_id']
-            score = float(row['mcq_score'] or 0)
-            if sid not in interactions:
-                interactions[sid] = {}
-            # Keep best score if attempted multiple times
-            interactions[sid][tid] = max(interactions[sid].get(tid, 0), score)
-
-        target_id = target_student.id
-        target_interactions = interactions.get(target_id, {})
-
-        if not interactions or len(interactions) < 2:
-            return []  # not enough data for CF
-
-        # ── Build domain-score profiles for similarity ──────────────────────
-        def _domain_profile(student_obj_or_id):
-            """Return 10-dim domain score vector."""
-            vec = np.zeros(N_DOMAINS)
-            try:
-                if isinstance(student_obj_or_id, int):
-                    from django.contrib.auth import get_user_model
-                    User = get_user_model()
-                    student_obj = User.objects.get(pk=student_obj_or_id)
-                else:
-                    student_obj = student_obj_or_id
-                from apps.assessments.models import AssessmentAttempt
-                for attempt in AssessmentAttempt.objects.filter(
-                    student=student_obj
-                ).select_related('assessment'):
-                    idx = DOMAIN_INDEX.get(attempt.assessment.domain)
-                    if idx is not None:
-                        vec[idx] = max(vec[idx], attempt.percentage / 100.0)
-            except Exception:
-                pass
-            return vec
-
-        target_profile = _domain_profile(target_student)
-
-        # ── Find K nearest neighbours ──────────────────────────────────────
-        neighbours: List[Tuple[int, float]] = []  # (student_id, similarity)
-
-        for sid, task_scores in interactions.items():
-            if sid == target_id:
-                continue
-            if len(task_scores) < CollaborativeRecommender.MIN_INTERACTIONS:
-                continue
-
-            neighbour_profile = _domain_profile(sid)
-            sim = _cosine_similarity(target_profile, neighbour_profile)
-            if sim > 0.1:  # only meaningful neighbours
-                neighbours.append((sid, sim))
-
-        # Sort by similarity descending, take top K
-        neighbours.sort(key=lambda x: x[1], reverse=True)
-        top_neighbours = neighbours[:CollaborativeRecommender.K_NEIGHBORS]
-
-        if not top_neighbours:
-            return []
-
-        # ── Predict scores for available tasks ─────────────────────────────
-        predictions: Dict[int, Tuple[float, int]] = {}  # task_id → (predicted_score, n)
-
-        for task_id in available_task_ids:
-            if task_id in already_assigned_ids:
-                continue
-            if task_id in target_interactions:
-                continue  # student already did this task
-
-            weighted_sum = 0.0
-            weight_total = 0.0
-            neighbour_count = 0
-
-            for sid, sim in top_neighbours:
-                score = interactions[sid].get(task_id)
-                if score is not None:
-                    weighted_sum += sim * score
-                    weight_total += sim
-                    neighbour_count += 1
-
-            if weight_total > 0:
-                predicted = weighted_sum / weight_total
-                predictions[task_id] = (round(predicted, 2), neighbour_count)
-
-        # ── Format results ──────────────────────────────────────────────────
-        results = []
-        for task_id, (pred_score, n_neighbours) in predictions.items():
-            results.append({
-                'task_id': task_id,
-                'predicted_score': pred_score,
-                'neighbor_count': n_neighbours,
-                'reason': (
-                    f"Students with similar profiles scored {pred_score:.0f}% "
-                    f"on this task ({n_neighbours} similar learner(s) matched)"
-                ),
-            })
-
-        results.sort(key=lambda x: x['predicted_score'], reverse=True)
-        return results[:limit]
 
 
 # ─────────────────────────────────────────────
 # 3. Student Clusterer
 # ─────────────────────────────────────────────
 
+# Per-cluster display adjectives and role nouns
+_CLUSTER_ADJECTIVES: Dict[int, str] = {
+    0: 'Aspiring',
+    1: 'Developing',
+    2: 'Skilled',
+    3: 'Expert',
+}
+_CLUSTER_SKILL_LEVEL: Dict[int, str] = {
+    0: 'Beginner',
+    1: 'Intermediate',
+    2: 'Intermediate',
+    3: 'Advanced',
+}
+_DOMAIN_ROLE: Dict[str, str] = {
+    'Graphic Design':    'Designer',
+    'Content Writing':   'Writer',
+    'Programming':       'Developer',
+    'Freelancing':       'Freelancer',
+    'E-Commerce':        'E-Commerce Specialist',
+    'QuickBooks':        'Accountant',
+    'AutoCAD':           'CAD Specialist',
+    'Data Analytics':    'Data Analyst',
+    'Digital Marketing': 'Marketer',
+    'WordPress':         'WordPress Specialist',
+}
+_CLUSTER_GENERIC_NAME: Dict[int, str] = {
+    0: 'Early Explorer',
+    1: 'Balanced Learner',
+    2: 'Well-Rounded Practitioner',
+    3: 'High Achiever',
+}
+
+
+def _cluster_display_name(cluster_id: int, dominant_domain: Optional[str]) -> str:
+    """Return a human-readable cluster name for a student."""
+    if not dominant_domain:
+        return _CLUSTER_GENERIC_NAME.get(cluster_id, 'Learner')
+    role = _DOMAIN_ROLE.get(dominant_domain, dominant_domain + ' Practitioner')
+    adj  = _CLUSTER_ADJECTIVES.get(cluster_id, 'Developing')
+    return f"{adj} {role}"
+
+
+def _build_cluster_summary(cluster_id: int, cluster_label: str, raw_data: Dict) -> Dict:
+    """Build a rich per-student cluster summary dict for storage."""
+    domain_scores: Dict[str, float] = raw_data.get('domain_scores', {})
+    dominant_domain: Optional[str] = (
+        max(domain_scores.items(), key=lambda kv: kv[1])[0]
+        if domain_scores else None
+    )
+    display_name   = _cluster_display_name(cluster_id, dominant_domain)
+    avg            = raw_data.get('avg_assessment_score', 0.0)
+    completion_rate = raw_data.get('completion_rate', 0.0)
+    trend_raw      = raw_data.get('improvement_trend', 0.0)
+
+    if trend_raw > 0.1:
+        trend_label = 'improving'
+    elif trend_raw < -0.1:
+        trend_label = 'declining'
+    else:
+        trend_label = 'stable'
+
+    if cluster_id == 0:
+        description = (
+            f"You're beginning your learning journey"
+            f"{f' in {dominant_domain}' if dominant_domain else ''}. "
+            "Each assessment brings you closer to your goals."
+        )
+    elif cluster_id == 1:
+        description = (
+            f"You're making solid progress"
+            f"{f' in {dominant_domain}' if dominant_domain else ''}. "
+            "Keep practising to reach the Competent level."
+        )
+    elif cluster_id == 2:
+        description = (
+            f"Strong performance"
+            f"{f' in {dominant_domain}' if dominant_domain else ''}! "
+            "You're ready for advanced tasks. Push for Expert status."
+        )
+    else:
+        description = (
+            f"Outstanding results"
+            f"{f' in {dominant_domain}' if dominant_domain else ''}! "
+            "You're among the top performers. Consider mentoring others."
+        )
+
+    strengths    = [d for d, s in domain_scores.items() if s >= 60]
+    focus_areas  = [d for d, s in domain_scores.items() if s < 40]
+
+    return {
+        'display_name':         display_name,
+        'description':          description,
+        'dominant_domain':      dominant_domain,
+        'skill_level':          _CLUSTER_SKILL_LEVEL.get(cluster_id, 'Intermediate'),
+        'avg_assessment_score': round(avg, 1),
+        'completion_rate':      round(completion_rate, 2),
+        'improvement_trend':    trend_label,
+        'strengths':            strengths[:3],
+        'focus_areas':          focus_areas[:2],
+    }
+
+
 class StudentClusterer:
     """
-    Clusters students into skill archetypes using KMeans on domain performance.
+    Clusters students into skill archetypes using KMeans on a 23-dim feature
+    vector that captures domain MCQ scores, task engagement, completion rate,
+    improvement trend, and average task MCQ score.
 
-    Input features (10-dim): normalised average MCQ score per domain.
     Clusters: 4 — Explorer, Developing, Competent, Expert.
     """
+
+    # Number of features used for clustering
+    N_CLUSTER_FEATURES = 23
+
+    @staticmethod
+    def _build_cluster_feature_vector(student) -> Tuple[np.ndarray, Dict]:
+        """
+        Build a 23-dim feature vector for a student and return supplementary data.
+
+        Layout:
+          [0:10]  domain MCQ assessment scores (0-1, latest per domain)
+          [10:20] per-domain task engagement (log-scaled 0-1)
+          [20]    overall task completion rate
+          [21]    improvement trend (normalised slope of recent scores)
+          [22]    average task MCQ score (0-1)
+
+        Returns:
+            (feature_vector np.ndarray shape (23,), raw_data dict)
+        """
+        from apps.assessments.models import AssessmentAttempt
+        from apps.tasks.models import TaskAssignment
+
+        feat = np.zeros(StudentClusterer.N_CLUSTER_FEATURES)
+
+        # ── Domain assessment scores (dim 0–9) ───────────────────────────
+        attempts = list(
+            AssessmentAttempt.objects.filter(student=student)
+            .select_related('assessment')
+            .order_by('attempted_at')
+        )
+        domain_scores: Dict[str, float] = {}
+        for attempt in attempts:
+            domain = attempt.assessment.domain
+            domain_scores[domain] = attempt.percentage  # latest wins
+
+        for domain, score in domain_scores.items():
+            idx = DOMAIN_INDEX.get(domain)
+            if idx is not None:
+                feat[idx] = score / 100.0
+
+        # ── Per-domain task engagement (dim 10–19) ───────────────────────
+        all_assignments = list(
+            TaskAssignment.objects.filter(
+                student=student,
+                status__in=['accepted', 'in_progress', 'completed'],
+            ).select_related('task')
+        )
+        domain_task_counts: Dict[str, int] = {}
+        completed_count = 0
+        total_count = len(all_assignments)
+        for ta in all_assignments:
+            d = ta.task.domain
+            domain_task_counts[d] = domain_task_counts.get(d, 0) + 1
+            if ta.status == 'completed':
+                completed_count += 1
+
+        for domain, count in domain_task_counts.items():
+            idx = DOMAIN_INDEX.get(domain)
+            if idx is not None:
+                # log-scale: 1→0.43, 3→0.60, 10→1.0
+                feat[N_DOMAINS + idx] = min(1.0, math.log1p(count) / math.log1p(10))
+
+        # ── Summary stats (dim 20–22) ────────────────────────────────────
+        feat[20] = completed_count / max(1, total_count)  # completion rate
+
+        # Improvement trend: normalised linear slope of last 5 assessment scores
+        if len(attempts) >= 2:
+            recent = np.array([a.percentage for a in attempts[-5:]], dtype=float)
+            x = np.arange(len(recent), dtype=float)
+            x -= x.mean()
+            y = recent - recent.mean()
+            denom = float(np.dot(x, x))
+            slope = float(np.dot(x, y) / denom) if denom > 0 else 0.0
+            feat[21] = float(np.clip(slope / 30.0, -1.0, 1.0))
+
+        # Average task MCQ score
+        try:
+            from apps.tasks.models import TaskCompletion, TaskMCQAttempt
+            completion_ids = list(
+                TaskCompletion.objects.filter(
+                    task_assignment__student=student,
+                    is_submitted=True,
+                ).values_list('id', flat=True)
+            )
+            if completion_ids:
+                mcq_attempts = list(
+                    TaskMCQAttempt.objects.filter(
+                        task_completion_id__in=completion_ids,
+                        is_submitted=True,
+                    )
+                )
+                if mcq_attempts:
+                    feat[22] = sum(float(a.mcq_score or 0) for a in mcq_attempts) / (
+                        len(mcq_attempts) * 100.0
+                    )
+        except Exception:
+            pass
+
+        raw_data = {
+            'domain_scores':       domain_scores,
+            'completion_rate':     float(feat[20]),
+            'improvement_trend':   float(feat[21]),
+            'avg_mcq_score':       float(feat[22]) * 100.0,
+            'avg_assessment_score': (
+                sum(domain_scores.values()) / len(domain_scores)
+                if domain_scores else 0.0
+            ),
+        }
+        return feat, raw_data
 
     @staticmethod
     def compute_cluster(student) -> Tuple[int, str]:
@@ -651,44 +764,25 @@ class StudentClusterer:
         Returns:
             (cluster_id: int, cluster_label: str)
         """
-        from apps.assessments.models import AssessmentAttempt
+        feat, raw_data = StudentClusterer._build_cluster_feature_vector(student)
 
-        attempts = AssessmentAttempt.objects.filter(
-            student=student
-        ).select_related('assessment')
-
-        if not attempts.exists():
+        if not raw_data['domain_scores']:
             return 0, CLUSTER_LABELS[0]  # Explorer — no data yet
 
-        # Build 10-dim domain score vector
-        domain_scores: Dict[str, List[float]] = {}
-        for attempt in attempts:
-            domain = attempt.assessment.domain
-            if domain not in domain_scores:
-                domain_scores[domain] = []
-            domain_scores[domain].append(attempt.percentage)
+        domain_vec   = feat[:N_DOMAINS]
+        active       = domain_vec[domain_vec > 0]
+        avg_score    = float(np.mean(active)) if len(active) > 0 else 0.0
+        completion   = float(feat[20])
+        trend        = float(feat[21])
 
-        vec = np.zeros(N_DOMAINS)
-        for domain, scores in domain_scores.items():
-            idx = DOMAIN_INDEX.get(domain)
-            if idx is not None:
-                vec[idx] = (sum(scores) / len(scores)) / 100.0  # normalise
+        # Composite: weighted blend of MCQ score, completion rate, improvement
+        composite = 0.6 * avg_score + 0.3 * completion + 0.1 * max(0.0, trend)
 
-        # Determine cluster from average score magnitude and breadth
-        avg_score = float(np.mean(vec[vec > 0])) if np.any(vec > 0) else 0.0
-        breadth = int(np.sum(vec > 0))  # number of domains attempted
-
-        # Rule-based cluster assignment backed by the KMeans centroid logic
-        # Centroids derived from expected student distributions:
-        # Explorer:   avg < 0.4  or breadth == 0
-        # Developing: 0.4 ≤ avg < 0.6 or breadth ≤ 2
-        # Competent:  0.6 ≤ avg < 0.8
-        # Expert:     avg ≥ 0.8
-        if breadth == 0 or avg_score < 0.4:
+        if not np.any(domain_vec > 0) or composite < 0.27:
             cluster_id = 0
-        elif avg_score < 0.6:
+        elif composite < 0.49:
             cluster_id = 1
-        elif avg_score < 0.8:
+        elif composite < 0.67:
             cluster_id = 2
         else:
             cluster_id = 3
@@ -698,11 +792,12 @@ class StudentClusterer:
     @staticmethod
     def compute_cluster_sklearn(all_students) -> Dict[int, Tuple[int, str]]:
         """
-        Batch-compute clusters for all students using sklearn KMeans.
-        Preferred over compute_cluster() when called in bulk (e.g., admin analytics).
+        Batch-compute clusters for all students using sklearn KMeans on
+        a 23-dim feature vector. Falls back to rule-based if sklearn is
+        unavailable or there are fewer students than N_CLUSTERS.
 
         Args:
-            all_students: queryset of User objects with role='Student'
+            all_students: queryset or list of User objects with role='Student'
 
         Returns:
             {student_id: (cluster_id, cluster_label)}
@@ -712,58 +807,36 @@ class StudentClusterer:
             from sklearn.preprocessing import StandardScaler
         except ImportError:
             logger.warning("scikit-learn not installed; falling back to rule-based clustering")
-            return {
-                s.id: StudentClusterer.compute_cluster(s)
-                for s in all_students
-            }
-
-        from apps.assessments.models import AssessmentAttempt
+            return {s.id: StudentClusterer.compute_cluster(s) for s in all_students}
 
         student_list = list(all_students)
         if len(student_list) < N_CLUSTERS:
-            return {
-                s.id: StudentClusterer.compute_cluster(s)
-                for s in student_list
-            }
+            return {s.id: StudentClusterer.compute_cluster(s) for s in student_list}
 
-        # Build feature matrix (n_students × N_DOMAINS)
         matrix = []
-        ids = []
+        ids    = []
         for student in student_list:
-            domain_scores: Dict[str, List[float]] = {}
-            for attempt in AssessmentAttempt.objects.filter(
-                student=student
-            ).select_related('assessment'):
-                domain = attempt.assessment.domain
-                if domain not in domain_scores:
-                    domain_scores[domain] = []
-                domain_scores[domain].append(attempt.percentage)
-
-            vec = np.zeros(N_DOMAINS)
-            for domain, scores in domain_scores.items():
-                idx = DOMAIN_INDEX.get(domain)
-                if idx is not None:
-                    vec[idx] = (sum(scores) / len(scores)) / 100.0
-
-            matrix.append(vec)
+            feat, _ = StudentClusterer._build_cluster_feature_vector(student)
+            matrix.append(feat)
             ids.append(student.id)
 
         X = np.array(matrix)
-        scaler = StandardScaler()
+        scaler   = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
-        kmeans = KMeans(n_clusters=N_CLUSTERS, random_state=42, n_init=10)
+        kmeans     = KMeans(n_clusters=N_CLUSTERS, random_state=42, n_init=10)
         raw_labels = kmeans.fit_predict(X_scaled)
 
-        # Re-order cluster IDs by centroid mean (ascending = Explorer → Expert)
+        # Re-order cluster IDs so that 0=Explorer … 3=Expert
+        # (sort by centroid mean across all 23 features)
         centroid_means = [
             float(np.mean(kmeans.cluster_centers_[c]))
             for c in range(N_CLUSTERS)
         ]
         ordered = sorted(range(N_CLUSTERS), key=lambda c: centroid_means[c])
-        remap = {old: new for new, old in enumerate(ordered)}
+        remap   = {old: new for new, old in enumerate(ordered)}
 
-        result = {}
+        result: Dict[int, Tuple[int, str]] = {}
         for student_id, raw_label in zip(ids, raw_labels):
             new_label = remap[int(raw_label)]
             result[student_id] = (new_label, CLUSTER_LABELS[new_label])
@@ -773,18 +846,22 @@ class StudentClusterer:
     @staticmethod
     def update_student_cluster(student) -> str:
         """
-        Compute and persist cluster for a single student.
+        Compute and persist cluster + cluster_summary for a single student.
 
         Returns:
             cluster label string
         """
+        feat, raw_data = StudentClusterer._build_cluster_feature_vector(student)
         cluster_id, label = StudentClusterer.compute_cluster(student)
+        summary = _build_cluster_summary(cluster_id, label, raw_data)
+
         try:
             from apps.accounts.models import StudentProfile
             profile, _ = StudentProfile.objects.get_or_create(user=student)
-            profile.cluster_id = cluster_id
-            profile.cluster_label = label
-            profile.save(update_fields=['cluster_id', 'cluster_label'])
+            profile.cluster_id      = cluster_id
+            profile.cluster_label   = label
+            profile.cluster_summary = summary
+            profile.save(update_fields=['cluster_id', 'cluster_label', 'cluster_summary'])
         except Exception as e:
             logger.warning(f"Could not persist cluster for student {student.id}: {e}")
         return label
@@ -1036,9 +1113,11 @@ def explain_recommendation(
     cf_score_val = 0.0
     cf_neighbor_count = 0
     cf_detail = 'No collaborative data yet.'
+    cf_debug = None
     if cf_entry and cf_entry.get('predicted_score') is not None:
         cf_score_val = float(cf_entry['predicted_score'])
         cf_neighbor_count = cf_entry.get('neighbor_count', 0)
+        cf_debug = cf_entry.get('cf_debug')
         cf_detail = (
             f"{cf_neighbor_count} similar student(s) scored "
             f"{cf_score_val:.0f}% on this task."
@@ -1125,6 +1204,7 @@ def explain_recommendation(
             'score': round(cf_score_val, 1),
             'neighbor_count': cf_neighbor_count,
             'detail': cf_detail,
+            'debug': cf_debug,
         },
         'overall_score': round(min(overall, 100.0), 2),
         'summary': ' '.join(summary_parts),

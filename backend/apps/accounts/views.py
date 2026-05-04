@@ -316,6 +316,11 @@ class MentorAssignedStudentsView(APIView):
                 'completed_tasks_count': student_profile.completed_tasks_count,
                 'pending_review_count': pending_reviews,
                 'strongest_domain': student_profile.strongest_domain,
+                'cluster_label': student_profile.cluster_label,
+                'cluster_display_name': (
+                    student_profile.cluster_summary.get('display_name', student_profile.cluster_label)
+                    if student_profile.cluster_summary else student_profile.cluster_label
+                ),
             })
         
         return Response({'success': True, 'data': result})

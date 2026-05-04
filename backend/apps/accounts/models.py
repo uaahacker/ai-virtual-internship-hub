@@ -135,6 +135,10 @@ class StudentProfile(models.Model):
         default='Explorer',
         help_text='Human-readable cluster label (Explorer/Developing/Competent/Expert)',
     )
+    cluster_summary = models.JSONField(
+        default=dict,
+        help_text='Rich cluster summary: display_name, description, dominant_domain, skill_level, scores',
+    )
     mentor_assigned = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

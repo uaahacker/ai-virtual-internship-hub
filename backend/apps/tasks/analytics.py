@@ -102,6 +102,18 @@ class StudentAnalyticsService:
                 min_attempts = domain_count
                 recommended_domain = domain
         
+        # Cluster info from student profile
+        cluster_info = {}
+        try:
+            profile = student.student_profile
+            cluster_info = {
+                'cluster_id':      profile.cluster_id,
+                'cluster_label':   profile.cluster_label,
+                'cluster_summary': profile.cluster_summary or {},
+            }
+        except Exception:
+            pass
+
         return {
             'total_assessments_attempted': assessments_attempted,
             'completed_tasks': completed_tasks_count,
@@ -121,6 +133,7 @@ class StudentAnalyticsService:
             },
             'skill_improvement_trend': skill_trend,
             'recommended_next_domain': recommended_domain or 'Programming',
+            'cluster_info': cluster_info,
         }
 
     @staticmethod
@@ -204,6 +217,24 @@ class MentorAnalyticsService:
             if perf['scores']:
                 perf['average_score'] = round(sum(perf['scores']) / len(perf['scores']), 2)
             del perf['scores']  # Remove raw scores from response
+
+        # Add cluster info to each student entry
+        if students_performance:
+            profiles_map = {
+                p.user_id: p
+                for p in StudentProfile.objects.filter(
+                    user_id__in=list(students_performance.keys())
+                )
+            }
+            for sid, perf in students_performance.items():
+                profile = profiles_map.get(sid)
+                if profile:
+                    summary = profile.cluster_summary or {}
+                    perf['cluster_label']        = profile.cluster_label
+                    perf['cluster_display_name'] = summary.get('display_name', profile.cluster_label)
+                else:
+                    perf['cluster_label']        = 'Explorer'
+                    perf['cluster_display_name'] = 'Explorer'
 
         avg_score = round(total_score / eval_count, 2) if eval_count > 0 else 0.0
 
@@ -293,17 +324,47 @@ class AdminAnalyticsService:
             'total_evaluations': all_evaluations.count(),
         }
         
-        # Cluster distribution across all students
-        cluster_distribution = (
-            StudentProfile.objects
-            .values('cluster_label')
-            .annotate(count=Count('id'))
-            .order_by('cluster_label')
-        )
-        cluster_breakdown = [
-            {'label': item['cluster_label'], 'count': item['count']}
-            for item in cluster_distribution
-        ]
+        # Enhanced cluster distribution — computed in Python to avoid
+        # cross-collection joins and JSON field aggregations in MongoDB.
+        all_profiles = list(StudentProfile.objects.all())
+
+        # group by cluster_id
+        from collections import defaultdict
+        cluster_groups: dict = defaultdict(list)
+        for p in all_profiles:
+            cluster_groups[p.cluster_id].append(p)
+
+        _CLUSTER_ORDER = {0: 'Explorer', 1: 'Developing', 2: 'Competent', 3: 'Expert'}
+        _CLUSTER_GENERIC_NAME = {
+            0: 'Early Explorers',
+            1: 'Developing Learners',
+            2: 'Skilled Practitioners',
+            3: 'High Achievers',
+        }
+
+        cluster_breakdown = []
+        for cid in sorted(_CLUSTER_ORDER.keys()):
+            group = cluster_groups.get(cid, [])
+            count = len(group)
+            avg_scores = [
+                p.cluster_summary.get('avg_assessment_score', 0)
+                for p in group
+                if p.cluster_summary
+            ]
+            avg_score = round(sum(avg_scores) / len(avg_scores), 1) if avg_scores else 0.0
+            # Use first non-generic display_name found in group as representative
+            display_names = [
+                p.cluster_summary.get('display_name', '')
+                for p in group
+                if p.cluster_summary and p.cluster_summary.get('display_name')
+            ]
+            display_name = _CLUSTER_GENERIC_NAME.get(cid, _CLUSTER_ORDER.get(cid, ''))
+            cluster_breakdown.append({
+                'label':        _CLUSTER_ORDER.get(cid, str(cid)),
+                'count':        count,
+                'display_name': display_name,
+                'avg_score':    avg_score,
+            })
 
         return {
             'system_metrics': system_metrics,

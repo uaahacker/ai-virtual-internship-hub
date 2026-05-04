@@ -331,5 +331,412 @@ class TestExplainRecommendation(unittest.TestCase):
         self.assertEqual(result['method'], 'hybrid')
 
 
+# ─── collaborative_filtering module ──────────────────────────────────────────
+
+from apps.tasks.collaborative_filtering import (
+    _interaction_score,
+    _cosine,
+    _interaction_vector,
+    build_interaction_matrix,
+    compute_neighbors,
+    predict_task_scores,
+    get_collaborative_recommendations,
+    STATUS_BASE,
+    MCQ_BLEND_WEIGHT,
+    MENTOR_ADJUSTMENT,
+    DOMAINS,
+    N_DOMAINS,
+)
+
+
+class TestInteractionScore(unittest.TestCase):
+    """Unit tests for the _interaction_score helper."""
+
+    def test_declined_always_zero(self):
+        score = _interaction_score('declined', mcq_score=100.0, mentor_review_status='approved')
+        self.assertEqual(score, 0.0)
+
+    def test_accepted_no_mcq(self):
+        score = _interaction_score('accepted', mcq_score=None, mentor_review_status='not_requested')
+        self.assertEqual(score, STATUS_BASE['accepted'])
+
+    def test_completed_with_mcq_blends_in(self):
+        score = _interaction_score('completed', mcq_score=100.0, mentor_review_status='not_requested')
+        expected = STATUS_BASE['completed'] + MCQ_BLEND_WEIGHT * 100.0
+        self.assertAlmostEqual(score, expected, places=4)
+
+    def test_completed_mcq_not_blended_for_non_completed(self):
+        # MCQ blend should only apply to 'completed' status
+        score_in_progress = _interaction_score('in_progress', mcq_score=100.0, mentor_review_status='not_requested')
+        self.assertEqual(score_in_progress, STATUS_BASE['in_progress'])
+
+    def test_mentor_approved_adds_bonus(self):
+        base = _interaction_score('completed', mcq_score=None, mentor_review_status='not_requested')
+        with_approval = _interaction_score('completed', mcq_score=None, mentor_review_status='approved')
+        self.assertGreater(with_approval, base)
+
+    def test_needs_revision_reduces_score(self):
+        base = _interaction_score('completed', mcq_score=None, mentor_review_status='not_requested')
+        with_revision = _interaction_score('completed', mcq_score=None, mentor_review_status='needs_revision')
+        self.assertLess(with_revision, base)
+
+    def test_score_bounded_0_to_100(self):
+        # Even with all bonuses, score must not exceed 100
+        score = _interaction_score('completed', mcq_score=100.0, mentor_review_status='approved')
+        self.assertLessEqual(score, 100.0)
+        self.assertGreaterEqual(score, 0.0)
+
+
+class TestCosine(unittest.TestCase):
+
+    def test_identical_vectors(self):
+        a = np.array([1.0, 2.0, 3.0])
+        self.assertAlmostEqual(_cosine(a, a), 1.0)
+
+    def test_orthogonal_vectors(self):
+        a = np.array([1.0, 0.0])
+        b = np.array([0.0, 1.0])
+        self.assertAlmostEqual(_cosine(a, b), 0.0)
+
+    def test_zero_vector_returns_zero(self):
+        a = np.zeros(5)
+        b = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        self.assertEqual(_cosine(a, b), 0.0)
+
+
+class TestInteractionVector(unittest.TestCase):
+
+    def test_normalised_to_0_1(self):
+        task_scores = {1: 80.0, 2: 100.0}
+        all_ids = [1, 2, 3]
+        vec = _interaction_vector(task_scores, all_ids)
+        self.assertAlmostEqual(vec[0], 0.8)
+        self.assertAlmostEqual(vec[1], 1.0)
+        self.assertAlmostEqual(vec[2], 0.0)
+
+    def test_unknown_task_ids_ignored(self):
+        task_scores = {99: 50.0}
+        all_ids = [1, 2]
+        vec = _interaction_vector(task_scores, all_ids)
+        self.assertTrue(all(v == 0.0 for v in vec))
+
+
+class TestComputeNeighbors(unittest.TestCase):
+    """Unit tests for compute_neighbors using pure in-memory data."""
+
+    def _make_interactions(self):
+        # Three students, each with 2+ tasks, sharing some tasks with target
+        return {
+            1: {10: 80.0, 11: 60.0, 12: 70.0},  # target
+            2: {10: 75.0, 11: 55.0, 13: 90.0},  # similar to target
+            3: {14: 50.0, 15: 40.0},              # no shared tasks with target
+            4: {10: 80.0, 11: 60.0},              # very similar to target
+        }
+
+    def _make_domain_profiles(self):
+        prog_idx = DOMAINS.index('Programming')
+        n = N_DOMAINS
+
+        def _profile(prog_val):
+            v = np.zeros(n)
+            v[prog_idx] = prog_val
+            return v
+
+        return {
+            1: _profile(0.7),
+            2: _profile(0.65),
+            3: _profile(0.1),
+            4: _profile(0.72),
+        }
+
+    def test_returns_sorted_by_similarity(self):
+        interactions = self._make_interactions()
+        profiles = self._make_domain_profiles()
+        neighbours = compute_neighbors(
+            target_student_id=1,
+            interactions=interactions,
+            domain_counts={},
+            domain_profiles=profiles,
+        )
+        sims = [n['similarity'] for n in neighbours]
+        self.assertEqual(sims, sorted(sims, reverse=True))
+
+    def test_target_not_in_neighbours(self):
+        interactions = self._make_interactions()
+        profiles = self._make_domain_profiles()
+        neighbours = compute_neighbors(
+            target_student_id=1,
+            interactions=interactions,
+            domain_counts={},
+            domain_profiles=profiles,
+        )
+        ids = [n['student_id'] for n in neighbours]
+        self.assertNotIn(1, ids)
+
+    def test_neighbour_has_required_keys(self):
+        interactions = self._make_interactions()
+        profiles = self._make_domain_profiles()
+        neighbours = compute_neighbors(
+            target_student_id=1,
+            interactions=interactions,
+            domain_counts={},
+            domain_profiles=profiles,
+        )
+        required = {'student_id', 'similarity', 'interaction_sim', 'domain_sim',
+                    'n_shared_tasks', 'n_tasks'}
+        for n in neighbours:
+            self.assertTrue(required.issubset(set(n.keys())))
+
+    def test_cold_start_no_interactions_returns_neighbours_by_domain(self):
+        # Target has no interactions — should still find neighbours via domain profile
+        interactions = {
+            1: {},  # target: no interactions
+            2: {10: 80.0, 11: 60.0},
+            3: {12: 70.0},
+        }
+        prog_idx = DOMAINS.index('Programming')
+        profiles = {
+            1: np.eye(N_DOMAINS)[prog_idx],
+            2: np.eye(N_DOMAINS)[prog_idx],
+            3: np.zeros(N_DOMAINS),
+        }
+        neighbours = compute_neighbors(
+            target_student_id=1,
+            interactions=interactions,
+            domain_counts={},
+            domain_profiles=profiles,
+        )
+        # Student 2 should appear (same domain), student 3 should have low/zero sim
+        ids = [n['student_id'] for n in neighbours]
+        self.assertIn(2, ids)
+
+
+class TestPredictTaskScores(unittest.TestCase):
+
+    def _make_data(self):
+        interactions = {
+            1: {10: 70.0},           # target — has task 10
+            2: {10: 80.0, 11: 90.0, 12: 60.0},
+            3: {11: 85.0, 13: 75.0},
+        }
+        neighbours = [
+            {'student_id': 2, 'similarity': 0.9, 'interaction_sim': 0.9,
+             'domain_sim': 0.9, 'n_shared_tasks': 1, 'n_tasks': 3},
+            {'student_id': 3, 'similarity': 0.7, 'interaction_sim': 0.7,
+             'domain_sim': 0.7, 'n_shared_tasks': 0, 'n_tasks': 2},
+        ]
+        return interactions, neighbours
+
+    def test_target_engaged_tasks_excluded(self):
+        interactions, neighbours = self._make_data()
+        preds = predict_task_scores(
+            target_student_id=1,
+            available_task_ids=[10, 11, 12, 13],
+            interactions=interactions,
+            neighbours=neighbours,
+        )
+        predicted_ids = [p['task_id'] for p in preds]
+        self.assertNotIn(10, predicted_ids)  # target already engaged with task 10
+
+    def test_predicted_score_is_weighted_average(self):
+        interactions, neighbours = self._make_data()
+        preds = predict_task_scores(
+            target_student_id=1,
+            available_task_ids=[11],
+            interactions=interactions,
+            neighbours=neighbours,
+        )
+        self.assertEqual(len(preds), 1)
+        pred = preds[0]
+        self.assertEqual(pred['task_id'], 11)
+        # Weighted avg: (0.9*90 + 0.7*85) / (0.9 + 0.7)
+        expected = round((0.9 * 90 + 0.7 * 85) / (0.9 + 0.7), 2)
+        self.assertAlmostEqual(pred['predicted_score'], expected, places=1)
+
+    def test_no_neighbours_with_task_yields_no_prediction(self):
+        interactions, neighbours = self._make_data()
+        preds = predict_task_scores(
+            target_student_id=1,
+            available_task_ids=[99],  # task that no neighbour has touched
+            interactions=interactions,
+            neighbours=neighbours,
+        )
+        self.assertEqual(preds, [])
+
+    def test_sorted_by_predicted_score_descending(self):
+        interactions, neighbours = self._make_data()
+        preds = predict_task_scores(
+            target_student_id=1,
+            available_task_ids=[11, 12, 13],
+            interactions=interactions,
+            neighbours=neighbours,
+        )
+        scores = [p['predicted_score'] for p in preds]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_result_has_required_keys(self):
+        interactions, neighbours = self._make_data()
+        preds = predict_task_scores(
+            target_student_id=1,
+            available_task_ids=[11],
+            interactions=interactions,
+            neighbours=neighbours,
+        )
+        required = {'task_id', 'predicted_score', 'neighbor_count',
+                    'neighbor_contributions', 'reason'}
+        for p in preds:
+            self.assertTrue(required.issubset(set(p.keys())))
+
+
+class TestBuildInteractionMatrix(unittest.TestCase):
+    """Integration-style tests with mocked ORM objects."""
+
+    def _make_assignment(self, assignment_id, student_id, task_id, domain, status,
+                         mentor_review_status='not_requested'):
+        a = MagicMock()
+        a.id = assignment_id
+        a.student_id = student_id
+        a.task_id = task_id
+        a.task.domain = domain
+        a.status = status
+        a.mentor_review_status = mentor_review_status
+        return a
+
+    @patch('apps.tasks.models.TaskMCQAttempt')
+    @patch('apps.tasks.models.TaskCompletion')
+    @patch('apps.tasks.models.TaskAssignment')
+    def test_completed_task_included(self, MockTA, MockTC, MockMCQ):
+        assignments = [
+            self._make_assignment(1, 101, 10, 'Programming', 'completed'),
+        ]
+        MockTA.objects.filter.return_value.select_related.return_value = assignments
+        MockTC.objects.filter.return_value = []
+        MockMCQ.objects.filter.return_value = []
+
+        interactions, domain_counts = build_interaction_matrix()
+        self.assertIn(101, interactions)
+        self.assertIn(10, interactions[101])
+        self.assertGreater(interactions[101][10], 0)
+
+    @patch('apps.tasks.models.TaskMCQAttempt')
+    @patch('apps.tasks.models.TaskCompletion')
+    @patch('apps.tasks.models.TaskAssignment')
+    def test_declined_task_excluded(self, MockTA, MockTC, MockMCQ):
+        # A 'declined' assignment should not appear in the matrix
+        # (build_interaction_matrix filters on status__in=['accepted','in_progress','completed'])
+        MockTA.objects.filter.return_value.select_related.return_value = []
+        MockTC.objects.filter.return_value = []
+        MockMCQ.objects.filter.return_value = []
+
+        interactions, _ = build_interaction_matrix()
+        self.assertEqual(interactions, {})
+
+    @patch('apps.tasks.models.TaskMCQAttempt')
+    @patch('apps.tasks.models.TaskCompletion')
+    @patch('apps.tasks.models.TaskAssignment')
+    def test_mcq_score_blended_in(self, MockTA, MockTC, MockMCQ):
+        assignments = [
+            self._make_assignment(1, 101, 10, 'Programming', 'completed'),
+        ]
+        MockTA.objects.filter.return_value.select_related.return_value = assignments
+
+        completion = MagicMock()
+        completion.task_assignment_id = 1
+        completion.id = 200
+        MockTC.objects.filter.return_value = [completion]
+
+        attempt = MagicMock()
+        attempt.task_completion_id = 200
+        attempt.mcq_score = 80.0
+        attempt.is_submitted = True
+        MockMCQ.objects.filter.return_value = [attempt]
+
+        interactions, _ = build_interaction_matrix()
+        expected = STATUS_BASE['completed'] + MCQ_BLEND_WEIGHT * 80.0
+        self.assertAlmostEqual(interactions[101][10], expected, places=2)
+
+    @patch('apps.tasks.models.TaskMCQAttempt')
+    @patch('apps.tasks.models.TaskCompletion')
+    @patch('apps.tasks.models.TaskAssignment')
+    def test_domain_counts_tracked(self, MockTA, MockTC, MockMCQ):
+        assignments = [
+            self._make_assignment(1, 101, 10, 'Programming', 'completed'),
+            self._make_assignment(2, 101, 11, 'Programming', 'accepted'),
+        ]
+        MockTA.objects.filter.return_value.select_related.return_value = assignments
+        MockTC.objects.filter.return_value = []
+        MockMCQ.objects.filter.return_value = []
+
+        _, domain_counts = build_interaction_matrix()
+        self.assertEqual(domain_counts[101].get('Programming', 0), 2)
+
+
+class TestGetCollaborativeRecommendations(unittest.TestCase):
+    """Smoke-test the full pipeline with mocked DB."""
+
+    @patch('apps.assessments.models.AssessmentAttempt')
+    @patch('apps.tasks.models.TaskMCQAttempt')
+    @patch('apps.tasks.models.TaskCompletion')
+    @patch('apps.tasks.models.TaskAssignment')
+    def test_returns_empty_when_not_enough_data(self, MockTA, MockTC, MockMCQ, MockAA):
+        MockTA.objects.filter.return_value.select_related.return_value = []
+        MockTC.objects.filter.return_value = []
+        MockMCQ.objects.filter.return_value = []
+        MockAA.objects.filter.return_value.select_related.return_value = []
+
+        student = MagicMock()
+        student.id = 1
+
+        results = get_collaborative_recommendations(student, [10, 11, 12])
+        self.assertEqual(results, [])
+
+    @patch('apps.assessments.models.AssessmentAttempt')
+    @patch('apps.tasks.models.TaskMCQAttempt')
+    @patch('apps.tasks.models.TaskCompletion')
+    @patch('apps.tasks.models.TaskAssignment')
+    def test_result_has_cf_debug_key(self, MockTA, MockTC, MockMCQ, MockAA):
+        def _assignment(aid, sid, tid, domain, status):
+            a = MagicMock()
+            a.id = aid; a.student_id = sid; a.task_id = tid
+            a.task.domain = domain; a.status = status
+            a.mentor_review_status = 'not_requested'
+            return a
+
+        assignments = [
+            _assignment(1, 1, 10, 'Programming', 'completed'),   # target
+            _assignment(2, 2, 10, 'Programming', 'completed'),   # neighbour has task 10
+            _assignment(3, 2, 11, 'Programming', 'accepted'),    # neighbour has task 11
+            _assignment(4, 2, 12, 'Data Analytics', 'completed'),
+        ]
+        MockTA.objects.filter.return_value.select_related.return_value = assignments
+        MockTC.objects.filter.return_value = []
+        MockMCQ.objects.filter.return_value = []
+
+        # Assessment attempts to build domain profiles
+        def _attempt(sid, domain, pct):
+            a = MagicMock()
+            a.student_id = sid
+            a.assessment.domain = domain
+            a.percentage = pct
+            return a
+
+        MockAA.objects.filter.return_value.select_related.return_value = [
+            _attempt(1, 'Programming', 70),
+            _attempt(2, 'Programming', 75),
+        ]
+
+        student = MagicMock()
+        student.id = 1
+
+        results = get_collaborative_recommendations(student, [11, 12])
+        # If neighbours found and tasks predicted, results will be non-empty
+        for res in results:
+            self.assertIn('cf_debug', res)
+            self.assertIn('n_neighbors_found', res['cf_debug'])
+            self.assertIn('interaction_matrix_size', res['cf_debug'])
+            self.assertIn('target_interactions', res['cf_debug'])
+            self.assertIn('neighbors', res['cf_debug'])
+
+
 if __name__ == '__main__':
     unittest.main()

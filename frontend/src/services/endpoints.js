@@ -123,6 +123,9 @@ export const analyticsService = {
 
   // Admin analytics
   getAdminAnalytics: () => api.get('/tasks/analytics/admin/'),
+
+  // Cluster overview (admin)
+  getClusterOverview: () => api.get('/tasks/analytics/clusters/'),
 };
 
 export const notificationService = {
