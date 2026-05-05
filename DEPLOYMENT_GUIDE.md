@@ -339,7 +339,7 @@ Use curl or your browser DevTools / Postman to hit the API.
 curl -X POST https://vihub.site/api/auth/register/ \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "mentor1@vihub.site",
+    "email": "mentor@vihub.site",
     "password": "Mentor@12345",
     "first_name": "Sarah",
     "last_name": "Khan",
