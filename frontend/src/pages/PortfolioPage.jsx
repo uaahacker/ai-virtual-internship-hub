@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import DashboardLayout from '../components/DashboardLayout';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -315,39 +316,41 @@ export default function PortfolioPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading portfolio…</p>
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm">Loading portfolio…</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-xl p-6">
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-xl p-6 mt-6">
           <p className="text-red-800">{error}</p>
           <button onClick={() => navigate('/student/dashboard')} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">
             Back to Dashboard
           </button>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (!portfolio) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-2xl mx-auto bg-blue-50 border border-blue-200 rounded-xl p-8 text-center">
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto bg-blue-50 border border-blue-200 rounded-xl p-8 text-center mt-6">
           <h2 className="text-xl font-bold text-blue-900 mb-2">Portfolio Empty</h2>
           <p className="text-blue-700 text-sm mb-4">Complete and get evaluated on tasks to start building your portfolio.</p>
-          <button onClick={() => navigate('/student/my-tasks')} className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-            View Available Tasks
+          <button onClick={() => navigate('/student/tasks/my-tasks')} className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+            View My Tasks
           </button>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
@@ -356,10 +359,11 @@ export default function PortfolioPage() {
   const overview = portfolio.overview;
 
   return (
-    <div className="min-h-screen bg-gray-50 print:bg-white">
-      {/* Header */}
-      <div className="bg-white border-b print:border-b-2">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <DashboardLayout>
+    <div className="print:bg-white">
+      {/* Header card */}
+      <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 mb-6">
+        <div className="">
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -417,8 +421,7 @@ export default function PortfolioPage() {
 
       {/* Edit Form */}
       {editMode && (
-        <div className="bg-white border-b print:hidden">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5 mb-5 print:hidden">
             <form onSubmit={handleUpdatePortfolio} className="space-y-4 max-w-xl">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
@@ -437,12 +440,11 @@ export default function PortfolioPage() {
               </div>
               <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Save Changes</button>
             </form>
-          </div>
         </div>
       )}
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div>
         {/* Overview block */}
         {overview && <OverviewSection overview={overview} />}
 
@@ -521,11 +523,12 @@ export default function PortfolioPage() {
       </div>
 
       {/* Print-only footer */}
-      <div className="hidden print:block max-w-6xl mx-auto px-4 pb-4 border-t mt-6 pt-4">
+      <div className="hidden print:block pb-4 border-t mt-6 pt-4">
         <p className="text-xs text-gray-400 text-center">
           Generated from Virtual Internship Hub · {new Date().toLocaleDateString()}
         </p>
       </div>
     </div>
+    </DashboardLayout>
   );
 }
