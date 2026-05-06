@@ -298,10 +298,11 @@ Last name: VIHub
 Password: (choose strong password)
 ```
 
-### Step 14 — Seed assessment questions
+### Step 14 — Seed assessment questions and tasks
 
 ```bash
 docker compose exec backend python manage.py seed_assessments
+docker compose exec backend python manage.py seed_tasks
 ```
 
 This creates 10 domain assessments (Web Dev, Graphic Design, Content Writing, Digital Marketing, Video Editing, Data Analysis, Mobile Dev, UI/UX, Cybersecurity, Cloud Computing) with multiple MCQ questions each.

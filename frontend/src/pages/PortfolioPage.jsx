@@ -375,8 +375,17 @@ export default function PortfolioPage() {
               <button onClick={() => setEditMode(!editMode)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
                 {editMode ? 'Cancel' : 'Edit'}
               </button>
-              <button onClick={handleExport} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">Export</button>
-              <button onClick={() => window.print()} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">Print</button>
+              <button onClick={handleExport} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">Export JSON</button>
+              <button
+                onClick={() => {
+                  document.title = `${portfolio.title || user?.name || 'My'}_Portfolio_${new Date().toISOString().slice(0, 10)}`;
+                  window.print();
+                  setTimeout(() => { document.title = 'VIHub'; }, 2000);
+                }}
+                className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-1"
+              >
+                ⬇ Download PDF
+              </button>
             </div>
           </div>
 

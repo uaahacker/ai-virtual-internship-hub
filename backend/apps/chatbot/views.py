@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class ChatSessionListCreateView(APIView):
     """List all chat sessions or create a new one."""
     
-    permission_classes = [IsAuthenticated, IsStudent]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         """Get all chat sessions for the user."""
@@ -70,7 +70,7 @@ class ChatSessionListCreateView(APIView):
 class ChatSessionDetailView(APIView):
     """Retrieve, update, or delete a chat session."""
     
-    permission_classes = [IsAuthenticated, IsStudent]
+    permission_classes = [IsAuthenticated]
     
     def get_session(self, session_id: int, user):
         """Helper to get session and check permission."""
@@ -156,7 +156,7 @@ class ChatSessionDetailView(APIView):
 class ChatMessageView(APIView):
     """Send and receive chat messages."""
     
-    permission_classes = [IsAuthenticated, IsStudent]
+    permission_classes = [IsAuthenticated]
     
     def post(self, request, session_id):
         """Send a message to the chatbot."""
@@ -211,7 +211,7 @@ class ChatMessageView(APIView):
 class ChatFeedbackView(APIView):
     """Submit feedback on chatbot responses."""
     
-    permission_classes = [IsAuthenticated, IsStudent]
+    permission_classes = [IsAuthenticated]
     
     def post(self, request):
         """Submit feedback for a message."""
@@ -265,7 +265,7 @@ class ChatFeedbackView(APIView):
 class ChatSessionStatsView(APIView):
     """Get statistics about a chat session."""
     
-    permission_classes = [IsAuthenticated, IsStudent]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request, session_id):
         """Get session statistics."""
@@ -294,7 +294,7 @@ class ChatSessionStatsView(APIView):
 class ChatSessionArchiveView(APIView):
     """Archive a chat session."""
     
-    permission_classes = [IsAuthenticated, IsStudent]
+    permission_classes = [IsAuthenticated]
     
     def post(self, request, session_id):
         """Archive a session."""

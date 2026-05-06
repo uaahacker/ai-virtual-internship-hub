@@ -44,8 +44,8 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         
         stats = {
             'total_items': items.count(),
-            'average_score': items.aggregate(Avg('score'))['score__avg'] or 0.0,
-            'total_score': items.aggregate(Count('score'))['score__count'] or 0,
+            'average_score': items.aggregate(Avg('final_score'))['final_score__avg'] or 0.0,
+            'total_score': items.aggregate(Count('final_score'))['final_score__count'] or 0,
             'by_domain': {}
         }
         
@@ -63,7 +63,7 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         for domain in stats['by_domain']:
             domain_items = items.filter(task_domain=domain)
             stats['by_domain'][domain]['average_score'] = (
-                domain_items.aggregate(Avg('score'))['score__avg'] or 0.0
+                domain_items.aggregate(Avg('final_score'))['final_score__avg'] or 0.0
             )
         
         return Response({

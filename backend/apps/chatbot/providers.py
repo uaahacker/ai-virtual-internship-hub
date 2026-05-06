@@ -39,7 +39,7 @@ class OpenRouterProvider(LLMProvider):
             headers = {
                 'Authorization': f'Bearer {self.api_key}',
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'http://localhost:5173',  # Your frontend URL
+                'HTTP-Referer': os.getenv('SITE_URL', 'https://vihub.site'),
                 'X-Title': 'Virtual Internship Hub',  # App name
                 'User-Agent': 'Virtual-Internship-Hub/1.0',
             }

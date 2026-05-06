@@ -32,6 +32,7 @@ import MyTasksPage from './pages/MyTasksPage';
 import TaskCompletionPage from './pages/TaskCompletionPage';
 import TaskMCQQuizPage from './pages/TaskMCQQuizPage';
 import TaskEvaluationResultPage from './pages/TaskEvaluationResultPage';
+import TextSubmissionPage from './pages/TextSubmissionPage';
 
 // Portfolio pages
 import PortfolioPage from './pages/PortfolioPage';
@@ -98,6 +99,7 @@ function App() {
       <Route path="/student/tasks/recommended" element={<ProtectedRoute role="Student"><RecommendedTasksPage /></ProtectedRoute>} />
       <Route path="/student/tasks/my-tasks" element={<ProtectedRoute role="Student"><MyTasksPage /></ProtectedRoute>} />
       <Route path="/student/tasks/complete/:assignmentId" element={<ProtectedRoute role="Student"><TaskCompletionPage /></ProtectedRoute>} />
+      <Route path="/student/tasks/submit-text/:assignmentId" element={<ProtectedRoute role="Student"><TextSubmissionPage /></ProtectedRoute>} />
       <Route path="/student/tasks/mcq/:completionId/:taskId" element={<ProtectedRoute role="Student"><TaskMCQQuizPage /></ProtectedRoute>} />
       <Route path="/student/tasks/evaluation/:evaluationId" element={<ProtectedRoute role="Student"><TaskEvaluationResultPage /></ProtectedRoute>} />
       <Route path="/student/portfolio" element={<ProtectedRoute role="Student"><PortfolioPage /></ProtectedRoute>} />

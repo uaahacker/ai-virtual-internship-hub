@@ -173,3 +173,21 @@ export const directMessageService = {
   send: (receiverId, content) => api.post('/notifications/messages/send/', { receiver_id: receiverId, content }),
   unreadCount: () => api.get('/notifications/messages/unread-count/'),
 };
+
+// FR4: Text submission & AI evaluation
+export const submissionService = {
+  submitText: (data) => api.post('/submissions/submit/', data),
+  getById: (id) => api.get(`/submissions/${id}/`),
+  getMySubmissions: () => api.get('/submissions/my/'),
+  getByAssignment: (assignmentId) => api.get(`/submissions/assignment/${assignmentId}/`),
+};
+
+// FR6: Portfolio endpoints (properly wired)
+export const portfolioService = {
+  getMyPortfolio: () => api.get('/portfolios/portfolios/me/'),
+  getStats: (portfolioId) => api.get(`/portfolios/portfolios/${portfolioId}/stats/`),
+  updatePortfolio: (portfolioId, data) => api.put(`/portfolios/portfolios/${portfolioId}/`, data),
+  getItems: () => api.get('/portfolios/portfolio-items/'),
+  getItem: (itemId) => api.get(`/portfolios/portfolio-items/${itemId}/`),
+  deleteItem: (itemId) => api.delete(`/portfolios/portfolio-items/${itemId}/`),
+};
