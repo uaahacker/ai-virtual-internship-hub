@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { FiUser, FiMail, FiLock, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
+import { GoogleCredentialButton } from '../components/GoogleCredentialButton';
 
 const ALL_DOMAINS = [
   'Graphic Design', 'Content Writing', 'Programming', 'Freelancing',
@@ -21,8 +22,26 @@ export default function RegisterPage() {
   });
   const [selectedDomains, setSelectedDomains] = useState([]);
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
+
+  const handleGoogleSuccess = async (idToken) => {
+    try {
+      const result = await googleLogin(idToken);
+      if (result?.needs_onboarding) {
+        navigate('/google-onboarding', {
+          state: { idToken, googleEmail: result.google_email, googleName: result.google_name },
+        });
+        return;
+      }
+      toast.success('Account created with Google!');
+      const dashPath = { Student: '/student/dashboard', Mentor: '/mentor/dashboard' };
+      navigate(dashPath[result.role] || '/login');
+    } catch (err) {
+      const msg = err.response?.data?.error?.message || 'Google sign-up failed.';
+      toast.error(msg);
+    }
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -180,6 +199,20 @@ export default function RegisterPage() {
                   Next <FiArrowRight size={18} />
                 </button>
               </form>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-xs text-gray-400 font-medium">OR</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+
+              {/* Google Sign-Up */}
+              <GoogleCredentialButton
+                onSuccess={handleGoogleSuccess}
+                onError={() => toast.error('Google sign-up failed. Please try again.')}
+                text="signup_with"
+              />
 
               <p className="text-center mt-6 text-gray-600">
                 Already have an account?{' '}

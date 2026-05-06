@@ -1211,3 +1211,141 @@ class ResetPasswordView(APIView):
 
         return Response({'success': True, 'message': 'Password reset successfully. You can now log in.'})
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Google OAuth View
+# ─────────────────────────────────────────────────────────────────────────────
+
+class GoogleAuthView(APIView):
+    """
+    POST /api/auth/google/
+    Receives a Google ID token from the frontend, verifies it, then:
+      - Existing user  → returns JWT immediately
+      - New user, role provided  → creates account, returns JWT
+      - New user, no role  → returns {needs_onboarding: true} so frontend
+                             shows role-selection screen before second call
+    Only Student and Mentor roles are allowed via Google sign-in.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        id_token_str = request.data.get('id_token', '').strip()
+        role = request.data.get('role', '').strip()  # optional on first call
+
+        if not id_token_str:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'id_token is required.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Verify Google ID token ──────────────────────────────────────────
+        try:
+            from google.oauth2 import id_token as google_id_token
+            from google.auth.transport import requests as google_requests
+
+            google_client_id = getattr(settings, 'GOOGLE_CLIENT_ID', '')
+            if not google_client_id:
+                return Response(
+                    {'success': False, 'error': {'code': 500, 'message': 'Google OAuth not configured on server.'}},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            idinfo = google_id_token.verify_oauth2_token(
+                id_token_str,
+                google_requests.Request(),
+                google_client_id,
+            )
+        except ValueError as exc:
+            logger.warning('Google token verification failed: %s', exc)
+            return Response(
+                {'success': False, 'error': {'code': 401, 'message': 'Invalid or expired Google token.'}},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        google_sub = idinfo.get('sub')        # unique Google user ID
+        email = idinfo.get('email', '').lower()
+        name = idinfo.get('name', '') or email.split('@')[0]
+
+        if not email:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'Google account has no email address.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Find existing user ──────────────────────────────────────────────
+        user = User.objects.filter(email__iexact=email).first()
+
+        if user:
+            # Block Admin from using Google login
+            if user.role == 'Admin':
+                return Response(
+                    {'success': False, 'error': {'code': 403, 'message': 'Admin accounts cannot use Google sign-in.'}},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if user.status == 'Inactive':
+                return Response(
+                    {'success': False, 'error': {'code': 403, 'message': 'Your account has been deactivated.'}},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            # Link google_id if not already set
+            if not user.google_id:
+                user.google_id = google_sub
+                user.save(update_fields=['google_id'])
+
+            tokens = _get_tokens(user)
+            return Response({
+                'success': True,
+                'data': {
+                    'user': UserSerializer(user, context={'request': request}).data,
+                    'tokens': tokens,
+                    'is_new_user': False,
+                },
+            })
+
+        # ── New user — need role selection first ───────────────────────────
+        if not role:
+            return Response({
+                'success': True,
+                'data': {
+                    'needs_onboarding': True,
+                    'google_name': name,
+                    'google_email': email,
+                },
+            })
+
+        if role not in ('Student', 'Mentor'):
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'Role must be Student or Mentor.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Create new user ─────────────────────────────────────────────────
+        import secrets
+        random_password = secrets.token_urlsafe(32)  # unusable password (Google login only)
+
+        user = User.objects.create_user(
+            email=email,
+            name=name,
+            password=random_password,
+            role=role,
+        )
+        user.google_id = google_sub
+        user.is_active = True
+        user.save(update_fields=['google_id', 'is_active'])
+
+        # Create matching profile
+        if role == 'Student':
+            StudentProfile.objects.get_or_create(user=user)
+        elif role == 'Mentor':
+            MentorProfile.objects.get_or_create(user=user)
+
+        tokens = _get_tokens(user)
+        return Response({
+            'success': True,
+            'data': {
+                'user': UserSerializer(user, context={'request': request}).data,
+                'tokens': tokens,
+                'is_new_user': True,
+            },
+        }, status=status.HTTP_201_CREATED)
+

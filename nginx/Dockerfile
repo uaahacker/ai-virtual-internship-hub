@@ -13,6 +13,10 @@ COPY frontend/ .
 ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
+# Google OAuth Client ID (public — safe to bake into frontend bundle)
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+
 RUN npm run build
 
 # Stage 2 — Serve with Nginx

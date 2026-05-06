@@ -9,6 +9,11 @@ export const authService = {
   resetPassword: (token, newPassword, newPasswordConfirm) =>
     api.post('/auth/reset-password/', { token, new_password: newPassword, new_password_confirm: newPasswordConfirm }),
   resendVerification: (email) => api.post('/auth/resend-verification/', { email }),
+  googleAuth: (idToken, role = null) => {
+    const payload = { id_token: idToken };
+    if (role) payload.role = role;
+    return api.post('/auth/google/', payload);
+  },
 };
 
 export const assessmentService = {

@@ -13,6 +13,7 @@ from .views import (
     AutoAssignMentorView, UpdateProfileView, ChangePasswordView,
     AdminStatsView, AdminUserManageView, AdminCreateUserView, AdminResetPasswordView,
     VerifyEmailView, ResendVerificationView, ForgotPasswordView, ResetPasswordView,
+    GoogleAuthView,
 )
 
 urlpatterns = [
@@ -28,6 +29,9 @@ urlpatterns = [
     # Password reset (no SMTP — token returned in response)
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
+
+    # Google OAuth
+    path('google/', GoogleAuthView.as_view(), name='google-auth'),
     
     # Account settings
     path('profile/update/', UpdateProfileView.as_view(), name='update-profile'),

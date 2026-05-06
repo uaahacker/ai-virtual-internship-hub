@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
@@ -21,16 +22,18 @@ try {
   
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <BrowserRouter>
-        <AuthProvider>
-          <ChatProvider>
-            <NotificationProvider>
-              <App />
-              <ToastContainer position="top-right" autoClose={3000} />
-            </NotificationProvider>
-          </ChatProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+        <BrowserRouter>
+          <AuthProvider>
+            <ChatProvider>
+              <NotificationProvider>
+                <App />
+                <ToastContainer position="top-right" autoClose={3000} />
+              </NotificationProvider>
+            </ChatProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </GoogleOAuthProvider>
     </React.StrictMode>
   );
   

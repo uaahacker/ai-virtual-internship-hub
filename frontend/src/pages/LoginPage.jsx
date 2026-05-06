@@ -3,13 +3,34 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { FiMail, FiLock } from 'react-icons/fi';
+import { GoogleCredentialButton } from '../components/GoogleCredentialButton';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
+
+  const DASH = { Student: '/student/dashboard', Mentor: '/mentor/dashboard', Admin: '/admin/dashboard' };
+
+  const handleGoogleSuccess = async (idToken) => {
+    try {
+      const result = await googleLogin(idToken);
+      if (result?.needs_onboarding) {
+        // New Google user — needs role selection
+        navigate('/google-onboarding', {
+          state: { idToken, googleEmail: result.google_email, googleName: result.google_name },
+        });
+        return;
+      }
+      toast.success('Signed in with Google!');
+      navigate(DASH[result.role] || '/login');
+    } catch (err) {
+      const msg = err.response?.data?.error?.message || 'Google sign-in failed.';
+      toast.error(msg);
+    }
+  };
   
   console.log('✅ LoginPage rendered');
 
@@ -24,8 +45,7 @@ export default function LoginPage() {
         Mentor: '/mentor/dashboard',
         Admin: '/admin/dashboard',
       };
-      navigate(dashPath[user.role] || '/login');
-    } catch (err) {
+      navigate(dashPath[user.role] || '/login');    } catch (err) {
       const msg = err.response?.data?.error?.message || 'Login failed. Please try again.';
       toast.error(msg);
     } finally {
@@ -123,6 +143,20 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Login'}
             </button>
           </form>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium">OR</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
+          {/* Google Sign-In */}
+          <GoogleCredentialButton
+            onSuccess={handleGoogleSuccess}
+            onError={() => toast.error('Google sign-in failed. Please try again.')}
+            text="signin_with"
+          />
 
           <p className="text-center mt-6 text-gray-600">
             Don't have an account?{' '}

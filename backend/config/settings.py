@@ -141,6 +141,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Used by UserSerializer when request context is not available
 MEDIA_BASE_URL = os.getenv('MEDIA_BASE_URL', '')  # e.g. https://vihub.site
 
+# ─── Google OAuth ─────────────────────────────────────────────────────────────
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+
 # ---------------------------------------------------------------------------
 # Default primary key field type
 # ---------------------------------------------------------------------------

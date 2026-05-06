@@ -56,6 +56,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)
+    # Google OAuth
+    google_id = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    onboarding_complete = models.BooleanField(default=True)  # False for new Google users until role is selected
 
     objects = UserManager()
 

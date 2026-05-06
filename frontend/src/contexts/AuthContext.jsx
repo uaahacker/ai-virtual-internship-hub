@@ -79,6 +79,18 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
+  // Returns user data on success, or {needs_onboarding, google_email, google_name} if role not yet set
+  const googleLogin = async (idToken, role = null) => {
+    const res = await authService.googleAuth(idToken, role);
+    const data = res.data.data;
+    if (data.needs_onboarding) return data; // caller handles role selection
+    localStorage.setItem('access_token', data.tokens.access);
+    localStorage.setItem('refresh_token', data.tokens.refresh);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setUser(data.user);
+    return data.user;
+  };
+
   const logout = async () => {
     try {
       const refresh = localStorage.getItem('refresh_token');
@@ -91,7 +103,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, googleLogin }}>
       {children}
     </AuthContext.Provider>
   );

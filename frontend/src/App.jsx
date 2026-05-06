@@ -58,6 +58,7 @@ import MentorTaskMCQPage from './pages/MentorTaskMCQPage';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import DirectChatPage from './pages/DirectChatPage';
 import NotificationsPage from './pages/NotificationsPage';
+import GoogleOnboardingPage from './pages/GoogleOnboardingPage';
 
 // Settings pages
 import StudentSettingsPage from './pages/StudentSettingsPage';
@@ -94,6 +95,7 @@ function App() {
       <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to={getDashboardPath(user.role)} />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/google-onboarding" element={<GoogleOnboardingPage />} />
 
       {/* Student routes */}
       <Route path="/student/dashboard" element={<ProtectedRoute role="Student"><StudentDashboard /></ProtectedRoute>} />
