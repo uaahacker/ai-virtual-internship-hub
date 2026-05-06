@@ -21,8 +21,8 @@ FROM nginx:1.25-alpine
 # Copy React build output
 COPY --from=react_build /frontend/dist /usr/share/nginx/html
 
-# Copy nginx config (HTTP — used before SSL is set up)
-COPY nginx/conf.d/vihub.conf /etc/nginx/conf.d/default.conf
+# Copy nginx config — use SSL config (cert already obtained via certbot)
+COPY nginx/conf.d/vihub-ssl.conf /etc/nginx/conf.d/default.conf
 
 # Certbot challenge directory
 RUN mkdir -p /var/www/certbot
