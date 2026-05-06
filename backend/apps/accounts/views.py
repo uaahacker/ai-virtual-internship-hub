@@ -769,15 +769,15 @@ class UpdateProfileView(APIView):
     def put(self, request):
         """Update user's name and profile picture."""
         print(f"[UPLOAD] FILES={list(request.FILES.keys())} CT={request.content_type}", flush=True)
+        user_id = request.user.pk  # grab id before any lazy resolution issues
+
         serializer = UpdateProfileSerializer(
             request.user,
             data=request.data,
             partial=True
         )
         serializer.is_valid(raise_exception=True)
-        print(f"[UPLOAD] validated_data keys={list(serializer.validated_data.keys())}", flush=True)
         serializer.save()
-        print(f"[UPLOAD] after save, profile_picture={getattr(request.user.profile_picture, 'name', 'NONE')}", flush=True)
 
         # Compress/resize profile picture if one was uploaded
         if 'profile_picture' in request.FILES:
@@ -786,31 +786,33 @@ class UpdateProfileView(APIView):
                 import io
                 from django.core.files.base import ContentFile
 
-                user = request.user
-                user.refresh_from_db()
-                if user.profile_picture:
-                    img = Image.open(user.profile_picture.path)
+                # Re-fetch from DB to get the freshly-committed file path
+                user_obj = User.objects.get(pk=user_id)
+                if user_obj.profile_picture:
+                    img = Image.open(user_obj.profile_picture.path)
                     img = img.convert('RGB')
                     if img.width > 400 or img.height > 400:
                         img.thumbnail((400, 400), Image.LANCZOS)
                     output = io.BytesIO()
                     img.save(output, format='JPEG', quality=85, optimize=True)
-                    user.profile_picture.save(
-                        f'profile_{user.id}.jpg',
+                    user_obj.profile_picture.save(
+                        f'profile_{user_id}.jpg',
                         ContentFile(output.getvalue()),
                         save=True,
                     )
+                    print(f"[UPLOAD] compressed → {user_obj.profile_picture.name}", flush=True)
             except Exception as exc:
-                logger.error('Profile picture compression failed for user %s: %s', request.user.id, exc)
-                # Compression failed but original file is still saved — continue
+                print(f"[UPLOAD] compression error: {exc}", flush=True)
 
-        # Refresh from DB so the response URL reflects the latest saved file
-        request.user.refresh_from_db()
-        
+        # Always fetch a fresh copy from DB for the response — avoids SimpleLazyObject staleness
+        fresh_user = User.objects.get(pk=user_id)
+        pic_name = fresh_user.profile_picture.name if fresh_user.profile_picture else 'EMPTY'
+        print(f"[UPLOAD] DB profile_picture={pic_name!r}", flush=True)
+
         return Response({
             'success': True,
             'message': 'Profile updated successfully.',
-            'data': UserSerializer(request.user, context={'request': request}).data,
+            'data': UserSerializer(fresh_user, context={'request': request}).data,
         })
 
 
