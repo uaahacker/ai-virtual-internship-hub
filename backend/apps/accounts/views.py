@@ -768,6 +768,7 @@ class UpdateProfileView(APIView):
 
     def put(self, request):
         """Update user's name and profile picture."""
+        logger.info('profile/update — FILES: %s  DATA keys: %s', list(request.FILES.keys()), list(request.data.keys()))
         serializer = UpdateProfileSerializer(
             request.user,
             data=request.data,

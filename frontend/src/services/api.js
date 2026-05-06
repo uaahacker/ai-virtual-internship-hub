@@ -6,24 +6,21 @@ console.log('🔌 API Base URL:', API_BASE);
 
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { 'Content-Type': 'application/json' },
   timeout: 10000, // 10 second timeout
 });
 
-// Attach JWT token to every request; also remove Content-Type for FormData
-// so the browser can set the correct multipart/form-data boundary automatically.
+// Attach JWT token; set Content-Type only for non-FormData requests.
+// For FormData the browser must set it (to include the multipart boundary).
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   if (config.data instanceof FormData) {
-    // Use AxiosHeaders .delete() (axios 1.x) or plain delete as fallback
-    if (typeof config.headers.delete === 'function') {
-      config.headers.delete('Content-Type');
-    } else {
-      delete config.headers['Content-Type'];
-    }
+    // Let the browser set Content-Type with the correct boundary
+    config.headers['Content-Type'] = undefined;
+  } else {
+    config.headers['Content-Type'] = 'application/json';
   }
   return config;
 });
