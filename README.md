@@ -34,14 +34,19 @@ This platform addresses the gap between academic learning and real-world freelan
 | # | Requirement | Status |
 |---|-------------|--------|
 | FR1 | User registration & authentication (Student / Mentor / Admin) | ✅ Done |
-| FR2 | AI-based skill assessment for domain recommendation | ✅ Done |
-| FR3 | ML task/project allocation using hybrid recommendation | ✅ Done |
-| FR4 | Automated text evaluation (NLP scoring: readability, grammar, originality) | ✅ Done |
-| FR5 | Mentor dashboard — review progress, give scored feedback | ✅ Done |
-| FR6 | Auto-generated portfolio from completed tasks + PDF export | ✅ Done |
-| FR7 | AI-powered chatbot for career guidance (Student & Mentor) | ✅ Done |
-| FR8 | Admin panel — manage users, assessments, tasks, analytics | ✅ Done |
-| FR9 | Analytics dashboards — progress, skill trends, cluster insights | ✅ Done |
+| FR2 | Google OAuth sign-in / sign-up (Student & Mentor) | ✅ Done |
+| FR3 | Token-based email verification (no SMTP required in dev) | ✅ Done |
+| FR4 | Forgot / reset password via secure token | ✅ Done |
+| FR5 | AI-based skill assessment for domain recommendation | ✅ Done |
+| FR6 | ML task/project allocation using hybrid recommendation | ✅ Done |
+| FR7 | Automated text evaluation (NLP scoring: readability, grammar, originality) | ✅ Done |
+| FR8 | Mentor dashboard — review progress, give scored feedback | ✅ Done |
+| FR9 | Auto-generated portfolio from completed tasks | ✅ Done |
+| FR10 | AI-powered chatbot for career guidance (Student & Mentor) | ✅ Done |
+| FR11 | Admin panel — manage users, assessments, tasks, analytics | ✅ Done |
+| FR12 | Analytics dashboards — progress, skill trends, cluster insights | ✅ Done |
+| FR13 | Profile picture upload with Pillow compression (max 400×400 px) | ✅ Done |
+| FR14 | In-app notifications, announcements, direct messages | ✅ Done |
 
 ---
 
@@ -102,18 +107,21 @@ This platform addresses the gap between academic learning and real-world freelan
 ## Features Implemented
 
 ### Student Experience
-- Register, take AI-graded domain skill assessments (10 domains)
+- Register with email/password **or Google OAuth** (one-click)
+- Email verification via UUID token (no SMTP required in development)
+- Forgot / reset password via secure token flow
+- Upload and manage profile picture (auto-compressed to 400×400 JPEG by Pillow)
+- Take AI-graded domain skill assessments (10 domains)
 - Receive 5-tier readiness score (Novice → Expert) with NLP feedback
-- View ML-recommended tasks ranked by hybrid AI score
+- View ML-recommended tasks ranked by hybrid AI score (Content-Based 60% + Collaborative 40%)
 - Accept tasks, track progress, submit with reflective writing
-- Submit written work → instant AI evaluation (readability, grammar, originality)
+- Submit written work → instant AI evaluation (readability, grammar, originality, TTR)
 - Take per-task MCQ quiz — auto-scored
-- View combined mentor + MCQ + NLP evaluation result
+- View combined mentor + MCQ evaluation result with strengths and suggestions
 - Auto-generated portfolio with score, skills, and mentor feedback
-- **Download portfolio as PDF** directly from the portfolio page
 - AI chatbot for freelancing career guidance
-- View personal analytics (domain breakdown, skill trends, cluster tier)
-- Direct messaging with mentor
+- View personal analytics (domain breakdown, skill trends, KMeans cluster tier)
+- In-app notifications + direct messaging with mentor
 
 ### Mentor Experience
 - View assigned students with cluster labels and progress scores
@@ -342,30 +350,41 @@ Multi-dimensional MCQ evaluation — no external APIs.
 Final Score = 0.6 × content_score + 0.4 × collaborative_score
 ```
 
-- **Content-Based (60%)**: 30-dim feature vectors; cosine similarity between student profile and task features
-- **Collaborative Filtering (40%)**: User-based KNN (K=5) on student × task MCQ score matrix
+- **Content-Based (60%)**: 30-dimensional feature vectors (10 domain MCQ scores with concept mastery boost, 10 skill-level encodings, 10 preferred-domain one-hots boosted by log-scaled completion history); cosine similarity between student profile and task feature vectors
+- **Collaborative Filtering (40%)**: User-based KNN (K=7, minimum 1 shared task) on a student × task interaction matrix. Interaction scores blend status (recommended=10, accepted=30, in_progress=50, completed=65), MCQ score (×0.35 blend), and mentor review adjustment (+10 approved / −8 needs_revision). Student similarity = 55% interaction-cosine + 45% domain-profile-cosine
+- Final `recommendation_explanation` JSON stored per assignment (match_reason, domain, score breakdown, explanation sentences)
 - Fallback to domain-match heuristic when insufficient interaction data
 
 ### 4. Student Clustering (KMeans)
 `backend/apps/tasks/ml_engine.py` — `StudentClusterer`
 
-- 4 clusters: **Explorer → Developing → Competent → Expert**
-- Input: 10-dim domain performance vector (one score per domain)
-- Updated automatically after each assessment attempt
-- Displayed with cluster badge on analytics + mentor dashboards
+- **K=4 clusters** on 10-dim domain performance vector (one MCQ score per domain)
+- Cluster labels: **Explorer** (0) / **Developing** (1) / **Competent** (2) / **Expert** (3)
+- Re-run after every assessment submission; results stored in `StudentProfile.cluster_id`, `.cluster_label`, `.cluster_summary` (JSON with display name and description)
+- Displayed as a badge on the student analytics dashboard and mentor dashboards
+- Platform-wide cluster distribution available to Admin via `GET /tasks/analytics/cluster-overview/`
 
-### 6. NLP Text Evaluation (FR4)
+### 5. Domain Predictor (RandomForest)
+`backend/apps/tasks/domain_predictor.py`
+
+- **13-feature input vector**: `[0:10]` MCQ score per domain · `[10]` completion_rate · `[11]` improvement_trend · `[12]` avg_task_mcq_score
+- **Training data**: real student DB records + `student_performance.csv` (500 rows) + synthetic seed data
+- **Accuracy: 95.58%** on 905 samples (trained 2026-05-04); serialized to `ml_models/domain_predictor.pkl`
+- Fallback: heuristic recency-decayed softmax (decay=0.85) when model unavailable
+- Accessible via `POST /tasks/analytics/domain-prediction/`
+
+### 6. NLP Text Evaluation (Originality / Plagiarism Detection)
 `backend/apps/submissions/evaluation_service.py`
 
 Automated evaluation of student written submissions — no external APIs.
 
-- **Readability** (25%): Flesch Reading Ease formula — measures sentence/word/syllable ratios. Higher = easier to read.
+- **Readability** (25%): Flesch Reading Ease formula — sentence/word/syllable ratios. Higher = easier to read.
 - **Vocabulary Diversity** (20%): Type-Token Ratio (TTR) — `unique_words / total_words × 100`. Rewards varied vocabulary.
-- **Grammar** (25%): Regex-based issue detection — repeated words, missing spaces after punctuation, lowercase sentence starts, multiple punctuation marks. Deducts 5 pts per issue.
-- **Originality** (20%): TF-IDF cosine similarity of the new submission vs all previous submissions. `originality = (1 − max_similarity) × 100`.
+- **Grammar** (25%): Regex-based issue detection — repeated words, missing spaces, lowercase sentence starts, multiple punctuation. −5 pts per issue.
+- **Originality / Plagiarism** (20%): TF-IDF cosine similarity of the new submission vs ALL previous submissions in the database. `originality = (1 − max_similarity) × 100`. A score near 0 indicates near-identical content (plagiarism detected).
 - **Length** (10%): Linear scale — 200+ words = full score.
 
-**Final AI score** = weighted composite (0–100) mapped to a readiness label:
+**Final AI score** = weighted composite (0–100) mapped to label:
 
 | Score | Label |
 |-------|-------|
@@ -374,30 +393,9 @@ Automated evaluation of student written submissions — no external APIs.
 | 60–79 | Good |
 | ≥ 80 | Excellent |
 
-Results stored in `AIEvaluation` model (OneToOne → Submission). Students see score circles, strengths, improvement tips, and grammar issues on the `TextSubmissionPage`.
+Results stored in `AIEvaluation` (OneToOne → Submission). Students see score circles, strengths, improvement tips, and flagged grammar issues.
 
-### 7. Domain Predictor (RandomForest)
-`backend/apps/tasks/domain_predictor.py`
-
-- 13-feature input vector:
-  - `[0:10]` Latest MCQ score per domain
-  - `[10]` Task completion rate
-  - `[11]` Improvement trend (normalized slope)
-  - `[12]` Average task MCQ score
-- **Three training data sources** (combined):
-  1. Real student records from PostgreSQL
-  2. `backend/datasets/student_performance.csv` — 500 rows (see §Datasets)
-  3. Synthetic seed data for cold-start coverage
-- Trained via `python manage.py train_domain_model`
-- Serialized to `backend/ml_models/domain_predictor.pkl`
-
-### 8. Collaborative Filtering
-`backend/apps/tasks/collaborative_filtering.py`
-
-- User-based KNN on student × task interaction matrix
-- Recommends tasks completed by similar students
-
-### 9. Adaptive Testing — Q-Learning (RL)
+### 7. Adaptive Testing — Q-Learning (RL)
 `backend/apps/assessments/adaptive_testing.py`
 
 Questions within each assessment are served in an **adaptively ordered** sequence computed by a tabular Q-Learning agent.
@@ -413,6 +411,27 @@ Questions within each assessment are served in an **adaptively ordered** sequenc
 | **Fallback** | If Q-table or module is unavailable, questions return in default `order` field sequence |
 
 The frontend API response format is **unchanged** — students receive the same JSON structure; questions simply appear in an optimal difficulty order.
+
+### 8. Profile Picture Processing (Pillow)
+`backend/apps/accounts/views.py` — `UpdateProfileView`
+
+- Accepts JPEG/PNG/GIF via `multipart/form-data`
+- Pillow converts to RGB, thumbnails to 400×400 px (`LANCZOS`), re-saves as JPEG at quality=85
+- Stored in `media/profile_pictures/profile_<user_id>.jpg` (Docker named volume `media_files`, served by Nginx)
+- `UserSerializer.get_profile_picture_url()` returns absolute URL via `request.build_absolute_uri()`
+
+---
+
+## Authentication System
+
+| Component | Detail |
+|-----------|--------|
+| **JWT** | `djangorestframework-simplejwt` — Access: 60 min, Refresh: 7 days, `ROTATE_REFRESH_TOKENS=True` |
+| **Custom backend** | `EmailBackend` — case-insensitive email auth |
+| **Google OAuth** | Server-side token verification via `google-auth` library; `GoogleAuthView` issues JWT pair; new users set `onboarding_complete=False` until role selected on `GoogleOnboardingPage` |
+| **Email verification** | UUID `VerificationToken` (24 h expiry, type=`email_verify`); token returned in API response (no SMTP needed in dev) |
+| **Password reset** | Same `VerificationToken` model (type=`password_reset`); `ForgotPasswordView` → `ResetPasswordView` |
+| **Roles** | Student / Mentor / Admin — enforced via `IsStudent`, `IsMentor`, `IsAdmin` permission classes |
 
 ---
 
@@ -509,7 +528,10 @@ All endpoints are prefixed with `/api/`.
 
 | Group | Key Endpoints |
 |-------|--------------|
-| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` |
+| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `PUT /auth/profile/update/` |
+| Google OAuth | `POST /auth/google/` |
+| Email Verification | `POST /auth/verify-email/` |
+| Password Reset | `POST /auth/forgot-password/`, `POST /auth/reset-password/` |
 | Assessments | `GET /assessments/`, `POST /assessments/:id/submit`, `GET /assessments/my-attempts/` |
 | Tasks | `GET /tasks/recommended/`, `GET /tasks/my-tasks/`, `PUT /tasks/assignments/:id/update/` |
 | Completion | `POST /tasks/assignments/:id/complete/`, `POST /tasks/completions/:id/submit-mcq/` |

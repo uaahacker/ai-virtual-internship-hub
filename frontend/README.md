@@ -27,8 +27,7 @@ The frontend is a React 18 single-page application built with Vite and styled wi
 | Vite | 5.0.0 | Build tool + dev server |
 | Tailwind CSS | 3.3.6 | Utility-first styling |
 | React Router DOM | 6.20.0 | Client-side routing |
-| Axios | 1.6.2 | HTTP client |
-| React Icons | 4.12.0 | Icon library |
+| Axios | 1.6.2 | HTTP client || @react-oauth/google | 0.12.x | Google OAuth Sign-In button || React Icons | 4.12.0 | Icon library |
 | React Markdown | 10.1.0 | Render markdown in chat messages |
 | React Toastify | 9.1.3 | Toast notifications |
 
@@ -115,6 +114,9 @@ If the refresh also fails, the user is logged out and redirected to `/login`.
 | Path Prefix | Role | Key Pages |
 |-------------|------|-----------|
 | `/login`, `/register` | Public | Auth pages |
+| `/google-onboarding` | New Google users | Role selection after OAuth sign-up |
+| `/verify-email` | Public | Email verification after registration |
+| `/forgot-password`, `/reset-password` | Public | Password reset flow |
 | `/` | Public | Landing page |
 | `/student/*` | Student | Dashboard, assessments, tasks, portfolio, analytics, chat |
 | `/mentor/*` | Mentor | Dashboard, students, reviews, tasks, analytics, chat |
@@ -134,9 +136,16 @@ If the refresh also fails, the user is logged out and redirected to `/login`.
 
 **Methods**:
 - `login(email, password)` — calls API, stores tokens, sets user
-- `register(data)` — creates account, auto-logs in
+- `loginWithGoogle(googleToken)` — sends Google ID token to `/auth/google/`, stores JWT pair
+- `register(data)` — creates account, returns verification token
 - `logout()` — blacklists refresh token, clears localStorage
 - `clearAuth()` — clears local state without API call (used on 401 cascade)
+- `setUser(userData)` — updates user state (used after profile picture upload)
+
+**Key notes**:
+- User object and tokens stored in `localStorage` (`user`, `access_token`, `refresh_token`)
+- `user.profile_picture_url` (not `profile_picture`) holds the absolute URL for display
+- After profile update: `setUser(response.data.data)` + `localStorage.setItem('user', JSON.stringify(response.data.data))`
 
 **Hook**: `useAuth()` — used by all pages needing user info or auth actions.
 
@@ -162,11 +171,11 @@ If the refresh also fails, the user is logged out and redirected to `/login`.
 
 **State**: `notifications`, `unreadCount`
 
-**Behaviour**: Polls `GET /api/notifications/unread-count/` every **30 seconds**. Refreshes full notification list when count changes.
+**Behaviour**: Polls `GET /api/notifications/unread-count/` every **30 seconds**. Refreshes full notification list when count changes. Unread count badge displayed in `DashboardLayout` top nav.
 
 **Methods**:
-- `markRead(id)` — marks one notification read
-- `markAllRead()` — marks all read
+- `markRead(id)` — marks one notification as read
+- `markAllRead()` — marks all as read
 - `refreshNotifications()` — manual refresh
 
 **Hook**: `useNotification()`
@@ -203,8 +212,12 @@ All functions return Axios promise responses. Error handling is done via try/cat
 | Page | Path | Description |
 |------|------|-------------|
 | `LandingPage` | `/` | Public landing page with feature overview |
-| `LoginPage` | `/login` | Email + password login form |
-| `RegisterPage` | `/register` | Registration with role selection |
+| `LoginPage` | `/login` | Email + password login form; includes Google Sign-In button |
+| `RegisterPage` | `/register` | Registration with role selection; includes Google Sign-In button |
+| `GoogleOnboardingPage` | `/google-onboarding` | Role selection for new Google OAuth users (`onboarding_complete=False`) |
+| `EmailVerificationPage` | `/verify-email` | Enter/paste email verification token |
+| `ForgotPasswordPage` | `/forgot-password` | Enter email to request reset token |
+| `ResetPasswordPage` | `/reset-password` | Enter token + new password |
 
 ### Student Pages
 
@@ -223,7 +236,8 @@ All functions return Axios promise responses. Error handling is done via try/cat
 | `TaskEvaluationResultPage` | `/student/tasks/:id/evaluation` | View final evaluation result |
 | `PortfolioPage` | `/student/portfolio` | Portfolio with item cards |
 | `PortfolioItemDetailPage` | `/student/portfolio/:id` | Single portfolio item detail |
-| `StudentSettingsPage` | `/student/settings` | Profile settings |
+| `StudentSettingsPage` | `/student/settings` | Profile settings + profile picture upload |
+| `NotificationsPage` | `/student/notifications` | In-app notifications with read/unread state |
 | `ChatPage` | `/student/chat` | AI chatbot full page |
 | `AnnouncementsPage` | `/student/announcements` | Platform announcements |
 | `DirectChatPage` | `/student/messages` | 1-to-1 message thread with mentor |
@@ -242,7 +256,8 @@ All functions return Axios promise responses. Error handling is done via try/cat
 | `MentorTasksPage` | `/mentor/tasks` | All tasks (view/manage) |
 | `MentorCreateTaskPage` | `/mentor/tasks/create` | Create new task |
 | `MentorTaskMCQPage` | `/mentor/tasks/:id/mcq` | Manage task MCQ questions |
-| `MentorSettingsPage` | `/mentor/settings` | Mentor profile settings |
+| `MentorSettingsPage` | `/mentor/settings` | Mentor profile settings + profile picture upload |
+| `NotificationsPage` | `/mentor/notifications` | In-app notifications |
 | `MentorChatPage` | `/mentor/chat` | Mentor AI assistant |
 | `AnnouncementsPage` | `/mentor/announcements` | Announcements (mentor view) |
 
@@ -263,19 +278,24 @@ All functions return Axios promise responses. Error handling is done via try/cat
 
 | Component | Description |
 |-----------|-------------|
-| `DashboardLayout` | Main layout wrapper — sidebar + top nav + content area |
-| `Sidebar` | Navigation sidebar; role-aware (different items per role) |
-| `ProtectedRoute` | Route guard — checks auth state and role |
-| `TaskCard` | Task card with title, domain, difficulty, recommendation score |
+| `DashboardLayout` | Main layout wrapper — sidebar + top nav + unread notification badge |
+| `Sidebar` | Navigation sidebar; role-aware (different items per Student/Mentor/Admin) |
+| `ProtectedRoute` | Route guard — checks `AuthContext.user` exists and `user.role` matches |
+| `TaskCard` | Task card with title, domain, difficulty, ML recommendation score + match reason |
 | `CardComponents` | Assessment card, stats card, score card reusable UI |
-| `ProgressAndUtilityComponents` | Progress bars, skill badges, score badges, spinner |
-| `DataTable` | Reusable sortable data table |
-| `StudentProfileCard` | Student info card with cluster badge |
-| `MentorProfileCard` | Mentor info card with expertise tags |
-| `ChatWidget` | Minimizable floating chat widget |
-| `FloatingChatButton` | Persistent floating button to open chat |
-| `ChatMessage` | Single chat message bubble (user vs assistant) |
+| `ProgressAndUtilityComponents` | Progress bars, skill badges, cluster tier badges, spinner |
+| `DataTable` | Reusable sortable/filterable data table |
+| `StudentProfileCard` | Student info card with KMeans cluster badge |
+| `MentorProfileCard` | Mentor info card with expertise domain tags |
+| `ChatWidget` | Minimizable floating chat widget (overlays all pages) |
+| `FloatingChatButton` | Persistent floating button to open/close the chat widget |
+| `ChatMessage` | Single chat message bubble (user vs assistant styling) |
 | `ConfirmModal` | Reusable confirmation dialog |
+
+**Profile Picture in DashboardLayout:**
+- Top nav shows profile picture (`user.profile_picture_url`) with `onError` fallback to letter avatar
+- Both the `<img>` and letter-avatar `<div>` are always in the DOM; toggled via `display` style
+- Prevents broken image icons if the URL is unavailable
 
 ---
 
@@ -308,3 +328,38 @@ VITE_API_BASE_URL=https://your-backend-domain.com
 ```
 
 The production build output (`npm run build`) generates static files in `dist/` which can be served by any static host (Netlify, Vercel, Nginx, etc.).
+
+### Google OAuth Setup
+
+Add `VITE_GOOGLE_CLIENT_ID` to your environment:
+
+```env
+# frontend/.env.local (development)
+VITE_GOOGLE_CLIENT_ID=276821512866-xxxx.apps.googleusercontent.com
+```
+
+In `main.jsx` the app is wrapped with `GoogleOAuthProvider`:
+```jsx
+<GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+  <App />
+</GoogleOAuthProvider>
+```
+
+In production the client ID is passed as a Docker build argument:
+```bash
+VITE_GOOGLE_CLIENT_ID=<your_client_id> docker compose up -d --build
+```
+
+### Axios FormData Handling
+
+Profile picture uploads use `multipart/form-data`. The Axios interceptor in `api.js` detects `FormData` and deliberately **omits** the `Content-Type` header so the browser sets the correct `multipart/form-data; boundary=...` automatically:
+
+```js
+if (config.data instanceof FormData) {
+  config.headers['Content-Type'] = undefined;  // let browser set boundary
+} else {
+  config.headers['Content-Type'] = 'application/json';
+}
+```
+
+Do **not** set a default `Content-Type` in the Axios instance — doing so overrides the multipart boundary and causes the backend to reject the upload.
