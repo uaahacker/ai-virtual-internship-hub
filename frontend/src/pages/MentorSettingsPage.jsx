@@ -32,15 +32,11 @@ export default function MentorSettingsPage() {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileForm({
-          ...profileForm,
-          profile_picture: file,
-          preview: reader.result,
-        });
-      };
-      reader.readAsDataURL(file);
+      setProfileForm(prev => ({
+        ...prev,
+        profile_picture: file,
+        preview: URL.createObjectURL(file),
+      }));
     }
   };
 

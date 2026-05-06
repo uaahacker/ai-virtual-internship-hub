@@ -18,7 +18,12 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   if (config.data instanceof FormData) {
-    delete config.headers['Content-Type'];
+    // Use AxiosHeaders .delete() (axios 1.x) or plain delete as fallback
+    if (typeof config.headers.delete === 'function') {
+      config.headers.delete('Content-Type');
+    } else {
+      delete config.headers['Content-Type'];
+    }
   }
   return config;
 });
