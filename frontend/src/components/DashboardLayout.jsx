@@ -99,12 +99,18 @@ export default function DashboardLayout({ children }) {
                 src={user.profile_picture_url}
                 alt={user.name}
                 className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-600"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
               />
-            ) : (
-              <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center font-bold">
-                {user?.name?.charAt(0)?.toUpperCase()}
-              </div>
-            )}
+            ) : null}
+            <div
+              className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center font-bold"
+              style={{ display: user?.profile_picture_url ? 'none' : 'flex' }}
+            >
+              {user?.name?.charAt(0)?.toUpperCase()}
+            </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{user?.name}</p>
               <p className="text-xs text-slate-400 capitalize">{user?.role?.toLowerCase()}</p>

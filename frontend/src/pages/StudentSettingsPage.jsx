@@ -72,6 +72,7 @@ export default function StudentSettingsPage() {
 
       if (response.data.success) {
         setUser(response.data.data);
+        localStorage.setItem('user', JSON.stringify(response.data.data));
         toast.success('Profile updated successfully!');
         setProfileForm({
           ...profileForm,
@@ -178,11 +179,12 @@ export default function StudentSettingsPage() {
                       alt="Preview"
                       className="w-full h-full object-cover rounded-full"
                     />
-                  ) : user?.profile_picture ? (
+                  ) : user?.profile_picture_url ? (
                     <img
-                      src={user.profile_picture}
+                      src={user.profile_picture_url}
                       alt="Profile"
                       className="w-full h-full object-cover rounded-full"
+                      onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.textContent = user?.name?.charAt(0)?.toUpperCase() || '?'; }}
                     />
                   ) : (
                     user?.name?.charAt(0)?.toUpperCase()
