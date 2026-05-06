@@ -806,13 +806,25 @@ class UpdateProfileView(APIView):
 
         # Always fetch a fresh copy from DB for the response — avoids SimpleLazyObject staleness
         fresh_user = User.objects.get(pk=user_id)
-        pic_name = fresh_user.profile_picture.name if fresh_user.profile_picture else 'EMPTY'
-        print(f"[UPLOAD] DB profile_picture={pic_name!r}", flush=True)
+        ser_data = UserSerializer(fresh_user, context={'request': request}).data
+
+        # Override profile_picture_url directly — builds URL independently of serializer method
+        if fresh_user.profile_picture and fresh_user.profile_picture.name:
+            try:
+                from django.conf import settings as _s
+                pic_url = request.build_absolute_uri(fresh_user.profile_picture.url)
+                ser_data = dict(ser_data)
+                ser_data['profile_picture_url'] = pic_url
+                print(f"[UPLOAD] final pic_url={pic_url!r}", flush=True)
+            except Exception as exc:
+                print(f"[UPLOAD] URL build error: {exc}", flush=True)
+        else:
+            print(f"[UPLOAD] no profile_picture on fresh_user", flush=True)
 
         return Response({
             'success': True,
             'message': 'Profile updated successfully.',
-            'data': UserSerializer(fresh_user, context={'request': request}).data,
+            'data': ser_data,
         })
 
 

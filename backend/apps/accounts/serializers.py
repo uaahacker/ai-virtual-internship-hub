@@ -55,15 +55,18 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_profile_picture_url(self, obj):
-        if not obj.profile_picture:
+        try:
+            if not obj.profile_picture or not obj.profile_picture.name:
+                return None
+            request = self.context.get('request')
+            pic_url = obj.profile_picture.url  # relative, e.g. /media/profile_pictures/x.jpg
+            if request:
+                return request.build_absolute_uri(pic_url)
+            from django.conf import settings
+            base = getattr(settings, 'MEDIA_BASE_URL', '').rstrip('/')
+            return f"{base}{pic_url}" if base else pic_url
+        except Exception:
             return None
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(obj.profile_picture.url)
-        # Fallback: build URL from MEDIA_URL without request
-        from django.conf import settings
-        base = getattr(settings, 'MEDIA_BASE_URL', '').rstrip('/')
-        return f"{base}{obj.profile_picture.url}" if base else obj.profile_picture.url
 
 
 class StudentProfileSerializer(serializers.ModelSerializer):
