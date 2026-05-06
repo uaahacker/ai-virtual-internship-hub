@@ -64,11 +64,7 @@ export default function StudentSettingsPage() {
         formData.append('profile_picture', profileForm.profile_picture);
       }
 
-      const response = await api.put('/auth/profile/update/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.put('/auth/profile/update/', formData);
 
       if (response.data.success) {
         setUser(response.data.data);

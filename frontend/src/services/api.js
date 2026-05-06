@@ -10,11 +10,15 @@ const api = axios.create({
   timeout: 10000, // 10 second timeout
 });
 
-// Attach JWT token to every request
+// Attach JWT token to every request; also remove Content-Type for FormData
+// so the browser can set the correct multipart/form-data boundary automatically.
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
   }
   return config;
 });
