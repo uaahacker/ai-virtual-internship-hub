@@ -168,9 +168,15 @@ CSRF_TRUSTED_ORIGINS=https://vihub.site,https://www.vihub.site
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
 
-# Chatbot LLM (optional)
-OPENAI_API_KEY=
-GEMINI_API_KEY=
+# Chatbot LLM (OpenRouter — used in production)
+OPENROUTER_API_KEY=sk-or-...
+
+# Site URL for chatbot HTTP-Referer header
+SITE_URL=https://vihub.site
+
+# Legacy optional keys (if switching providers)
+# OPENAI_API_KEY=
+# GEMINI_API_KEY=
 ```
 
 **IMPORTANT:** Use the same `DB_PASSWORD` value — remember it for the next steps.
@@ -304,6 +310,8 @@ Password: (choose strong password)
 docker compose exec backend python manage.py seed_assessments
 docker compose exec backend python manage.py seed_tasks
 ```
+
+`seed_assessments` creates 10 domain MCQ assessments. `seed_tasks` creates sample tasks for all domains so students have tasks to accept immediately after registration.
 
 This creates 10 domain assessments (Web Dev, Graphic Design, Content Writing, Digital Marketing, Video Editing, Data Analysis, Mobile Dev, UI/UX, Cybersecurity, Cloud Computing) with multiple MCQ questions each.
 
@@ -554,6 +562,7 @@ docker compose exec backend python manage.py COMMAND
 | Create admin user | `docker compose exec backend python manage.py create_admin` |
 | Reset admin password | `docker compose exec backend python manage.py reset_admin` |
 | Seed assessments | `docker compose exec backend python manage.py seed_assessments` |
+| Seed tasks | `docker compose exec backend python manage.py seed_tasks` |
 | Train ML model | `docker compose exec backend python manage.py train_domain_model` |
 | Train ML (real data only) | `docker compose exec backend python manage.py train_domain_model --no-seed` |
 | Check ML model info | `docker compose exec backend python manage.py train_domain_model --info` |

@@ -23,10 +23,15 @@ DB_HOST=localhost
 DB_PORT=5432
 ```
 
-### 4. Run Migrations
+### 4. Run Migrations & Seed Data
 ```bash
 cd backend
 python manage.py migrate
+python manage.py seed_assessments
+python manage.py seed_tasks
+
+# Download NLTK data (for NLP text evaluation)
+python -c "import nltk; nltk.download('punkt'); nltk.download('wordnet')"
 ```
 
 ### 5. Start Server

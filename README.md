@@ -35,10 +35,10 @@ This platform addresses the gap between academic learning and real-world freelan
 | FR1 | User registration & authentication (Student / Mentor / Admin) | ✅ Done |
 | FR2 | AI-based skill assessment for domain recommendation | ✅ Done |
 | FR3 | ML task/project allocation using hybrid recommendation | ✅ Done |
-| FR4 | Automated task evaluation (MCQ scoring + NLP feedback) | ✅ Done |
+| FR4 | Automated text evaluation (NLP scoring: readability, grammar, originality) | ✅ Done |
 | FR5 | Mentor dashboard — review progress, give scored feedback | ✅ Done |
-| FR6 | Auto-generated portfolio from completed tasks | ✅ Done |
-| FR7 | AI-powered chatbot for career guidance | ✅ Done |
+| FR6 | Auto-generated portfolio from completed tasks + PDF export | ✅ Done |
+| FR7 | AI-powered chatbot for career guidance (Student & Mentor) | ✅ Done |
 | FR8 | Admin panel — manage users, assessments, tasks, analytics | ✅ Done |
 | FR9 | Analytics dashboards — progress, skill trends, cluster insights | ✅ Done |
 
@@ -51,8 +51,9 @@ This platform addresses the gap between academic learning and real-world freelan
 │                    React / Vite Frontend                │
 │  (Tailwind CSS · React Router v6 · Axios · Toastify)   │
 │                                                         │
-│  Student ──▶ Assessment ──▶ Tasks ──▶ Portfolio         │
-│  Mentor  ──▶ Review ──▶ Evaluate ──▶ Analytics          │
+│  Student ──▶ Assessment ──▶ Tasks ──▶ Submit Text       │
+│          ──▶ Portfolio (PDF export) ──▶ Chatbot         │
+│  Mentor  ──▶ Review ──▶ Evaluate ──▶ Analytics ──▶ Chat │
 │  Admin   ──▶ Users ──▶ Assessments ──▶ Reports          │
 └──────────────────────┬──────────────────────────────────┘
                        │  HTTP/REST  (JWT Auth)
@@ -60,19 +61,22 @@ This platform addresses the gap between academic learning and real-world freelan
 │                Django REST Framework API                │
 │                   (Python 3 · Django 4.2)               │
 │                                                         │
-│  /api/auth/         accounts app                        │
-│  /api/assessments/  assessments app                     │
-│  /api/tasks/        tasks app  ← ML Engine here         │
-│  /api/chatbot/      chatbot app                         │
+│  /api/auth/          accounts app                       │
+│  /api/assessments/   assessments app                    │
+│  /api/tasks/         tasks app  ← ML Engine here        │
+│  /api/chatbot/       chatbot app                        │
 │  /api/notifications/ notifications app                  │
+│  /api/portfolios/    portfolios app                     │
+│  /api/submissions/   submissions app ← NLP Engine here  │
 └──────────────────────┬──────────────────────────────────┘
                        │
           ┌────────────┴────────────┐
           ▼                         ▼
    PostgreSQL DB            ML Models (.pkl)
-   (20+ tables)       domain_predictor.pkl
+   (23+ tables)       domain_predictor.pkl
                       KMeans clustering
                       KNN collaborative filter
+                      TF-IDF (submissions)
 ```
 
 ---
@@ -101,9 +105,11 @@ This platform addresses the gap between academic learning and real-world freelan
 - Receive 5-tier readiness score (Novice → Expert) with NLP feedback
 - View ML-recommended tasks ranked by hybrid AI score
 - Accept tasks, track progress, submit with reflective writing
+- Submit written work → instant AI evaluation (readability, grammar, originality)
 - Take per-task MCQ quiz — auto-scored
-- View combined mentor + MCQ evaluation result
+- View combined mentor + MCQ + NLP evaluation result
 - Auto-generated portfolio with score, skills, and mentor feedback
+- **Download portfolio as PDF** directly from the portfolio page
 - AI chatbot for freelancing career guidance
 - View personal analytics (domain breakdown, skill trends, cluster tier)
 - Direct messaging with mentor
@@ -117,7 +123,7 @@ This platform addresses the gap between academic learning and real-world freelan
 - Analytics dashboard — cluster distribution, AI insights, domain breakdown
 - Create / manage custom tasks with MCQ questions
 - Select and assign/unassign students
-- AI assistant chat
+- **AI assistant chat** (mentors can now use the chatbot)
 
 ### Admin Experience
 - Live stats dashboard (user counts, task/assessment statistics)
@@ -159,7 +165,9 @@ fyp/
 │   │   │   └── README.md
 │   │   ├── core/                   ← Shared permissions & exception handler
 │   │   │   └── README.md
-│   │   └── submissions/            ← (stub, future expansion)
+│   │   ├── portfolios/             ← Student portfolio models + stats API
+│   │   └── README.md
+│   └── submissions/            ← Text submission + NLP evaluation (FR4)
 │   └── ml_models/
 │       └── domain_predictor.pkl    ← Trained RandomForest model
 └── frontend/
@@ -239,6 +247,9 @@ python manage.py create_admin
 # (Optional) Seed assessment questions
 python manage.py seed_assessments
 
+# (Optional) Seed task data
+python manage.py seed_tasks
+
 # (Optional) Train ML domain prediction model
 python manage.py train_domain_model
 
@@ -271,9 +282,10 @@ The backend is a Django 4.2 REST API organized into 7 apps:
 | `accounts` | `/api/auth/` | Authentication, user management, mentor/student profiles |
 | `assessments` | `/api/assessments/` | Skill assessments with AI evaluation |
 | `tasks` | `/api/tasks/` | Tasks, assignments, ML recommendations, portfolio |
-| `chatbot` | `/api/chatbot/` | AI career chatbot sessions |
+| `chatbot` | `/api/chatbot/` | AI career chatbot sessions (Student + Mentor) |
 | `notifications` | `/api/notifications/` | Notifications, announcements, messages |
-| `portfolios` | *(via tasks)* | Portfolio models (managed via tasks app) |
+| `portfolios` | `/api/portfolios/` | Portfolio CRUD, stats, PDF export support |
+| `submissions` | `/api/submissions/` | Text submissions + NLP evaluation engine |
 | `core` | *(shared)* | Permissions, exception handling |
 
 **Auth**: JWT (60-min access tokens, 7-day refresh with rotation). All endpoints require `Authorization: Bearer <token>` except register and login.
@@ -341,7 +353,29 @@ Final Score = 0.6 × content_score + 0.4 × collaborative_score
 - Updated automatically after each assessment attempt
 - Displayed with cluster badge on analytics + mentor dashboards
 
-### 5. Domain Predictor (RandomForest)
+### 6. NLP Text Evaluation (FR4)
+`backend/apps/submissions/evaluation_service.py`
+
+Automated evaluation of student written submissions — no external APIs.
+
+- **Readability** (25%): Flesch Reading Ease formula — measures sentence/word/syllable ratios. Higher = easier to read.
+- **Vocabulary Diversity** (20%): Type-Token Ratio (TTR) — `unique_words / total_words × 100`. Rewards varied vocabulary.
+- **Grammar** (25%): Regex-based issue detection — repeated words, missing spaces after punctuation, lowercase sentence starts, multiple punctuation marks. Deducts 5 pts per issue.
+- **Originality** (20%): TF-IDF cosine similarity of the new submission vs all previous submissions. `originality = (1 − max_similarity) × 100`.
+- **Length** (10%): Linear scale — 200+ words = full score.
+
+**Final AI score** = weighted composite (0–100) mapped to a readiness label:
+
+| Score | Label |
+|-------|-------|
+| < 40 | Needs Work |
+| 40–59 | Satisfactory |
+| 60–79 | Good |
+| ≥ 80 | Excellent |
+
+Results stored in `AIEvaluation` model (OneToOne → Submission). Students see score circles, strengths, improvement tips, and grammar issues on the `TextSubmissionPage`.
+
+### 7. Domain Predictor (RandomForest)
 `backend/apps/tasks/domain_predictor.py`
 
 - 13-feature input vector:
@@ -352,7 +386,7 @@ Final Score = 0.6 × content_score + 0.4 × collaborative_score
 - Trained via `python manage.py train_domain_model`
 - Serialized to `backend/ml_models/domain_predictor.pkl`
 
-### 6. Collaborative Filtering
+### 8. Collaborative Filtering
 `backend/apps/tasks/collaborative_filtering.py`
 
 - User-based KNN on student × task interaction matrix
@@ -416,6 +450,8 @@ All endpoints are prefixed with `/api/`.
 | Chatbot | `POST /chatbot/sessions/:id/messages/` |
 | Notifications | `GET /notifications/`, `POST /notifications/read-all/` |
 | Admin | `GET /auth/admin/stats/`, `GET /auth/admin/users`, `POST /auth/mentor/auto-assign/` |
+| Submissions | `POST /submissions/submit/`, `GET /submissions/my/`, `GET /submissions/assignment/:id/` |
+| Portfolios | `GET /portfolios/portfolios/me/`, `GET /portfolios/portfolios/:id/stats/` |
 
 ---
 
@@ -449,6 +485,9 @@ Key tables in PostgreSQL:
 | `task_mcq_attempts` | TaskMCQAttempt | MCQ answers + auto-score |
 | `task_evaluations` | TaskEvaluation | Mentor score + final score |
 | `portfolio_items` | PortfolioItem | Auto-generated portfolio entries |
+| `submissions_submission` | Submission | Student text submissions |
+| `submissions_aievaluation` | AIEvaluation | NLP evaluation results (scores, feedback) |
+| `submissions_mentorevaluation` | MentorEvaluation | Mentor scored feedback on submissions |
 | `chatbot_chatsession` | ChatSession | Chat sessions per user |
 | `chatbot_chatmessage` | ChatMessage | Chat messages |
 | `notifications_notification` | Notification | In-app notifications |
@@ -472,9 +511,15 @@ DB_PASSWORD=yourpassword
 DB_HOST=localhost
 DB_PORT=5432
 
-# Optional — for chatbot LLM integration
-OPENAI_API_KEY=sk-...
-GEMINI_API_KEY=...
+# Chatbot — OpenRouter LLM (used in production)
+OPENROUTER_API_KEY=sk-or-...
+
+# Site URL for chatbot HTTP-Referer header
+SITE_URL=https://vihub.site
+
+# Legacy optional keys (if switching providers)
+# OPENAI_API_KEY=sk-...
+# GEMINI_API_KEY=...
 ```
 
 ---
@@ -500,11 +545,36 @@ python manage.py train_domain_model --no-seed
 # Check ML model metadata
 python manage.py train_domain_model --info
 
+# Download NLTK data (required for NLP evaluation)
+python -c "import nltk; nltk.download('punkt'); nltk.download('wordnet')"
+
 # Run development server
 python manage.py runserver
 
 # Apply database migrations
 python manage.py migrate
+```
+
+---
+
+## Production Deployment
+
+The platform is deployed at **https://vihub.site** on a Contabo VPS (Ubuntu, 8GB RAM) using Docker Compose.
+
+```
+Internet → Nginx (HTTPS/443) → Django/Gunicorn (:8000) → PostgreSQL 16
+                             ↑ React SPA served as static files by Nginx
+```
+
+SSL: Let's Encrypt (auto-renewed). See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for full setup instructions.
+
+```bash
+# Quick update after a code push:
+cd /opt/vihub
+git pull origin master
+docker compose build nginx backend
+docker compose up -d
+docker compose exec backend python manage.py migrate
 ```
 
 ---
