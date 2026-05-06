@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.db import models
 from django.utils import timezone
@@ -1255,7 +1256,7 @@ class GoogleAuthView(APIView):
                 google_requests.Request(),
                 google_client_id,
             )
-        except ValueError as exc:
+        except (ValueError, Exception) as exc:
             logger.warning('Google token verification failed: %s', exc)
             return Response(
                 {'success': False, 'error': {'code': 401, 'message': 'Invalid or expired Google token.'}},
