@@ -768,14 +768,16 @@ class UpdateProfileView(APIView):
 
     def put(self, request):
         """Update user's name and profile picture."""
-        print(f"[UPLOAD] FILES={list(request.FILES.keys())} DATA={list(request.data.keys())} CT={request.content_type}", flush=True)
+        print(f"[UPLOAD] FILES={list(request.FILES.keys())} CT={request.content_type}", flush=True)
         serializer = UpdateProfileSerializer(
             request.user,
             data=request.data,
             partial=True
         )
         serializer.is_valid(raise_exception=True)
+        print(f"[UPLOAD] validated_data keys={list(serializer.validated_data.keys())}", flush=True)
         serializer.save()
+        print(f"[UPLOAD] after save, profile_picture={getattr(request.user.profile_picture, 'name', 'NONE')}", flush=True)
 
         # Compress/resize profile picture if one was uploaded
         if 'profile_picture' in request.FILES:
