@@ -797,8 +797,12 @@ class UpdateProfileView(APIView):
                         ContentFile(output.getvalue()),
                         save=True,
                     )
-            except Exception:
-                pass  # Compression is best-effort; don't fail the request
+            except Exception as exc:
+                logger.error('Profile picture compression failed for user %s: %s', request.user.id, exc)
+                # Compression failed but original file is still saved — continue
+
+        # Refresh from DB so the response URL reflects the latest saved file
+        request.user.refresh_from_db()
         
         return Response({
             'success': True,

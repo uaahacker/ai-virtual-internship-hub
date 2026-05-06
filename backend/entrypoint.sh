@@ -17,6 +17,10 @@ python manage.py migrate --noinput
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput
 
+echo "📂 Ensuring media directories exist..."
+mkdir -p /app/media/profile_pictures
+chmod -R 755 /app/media
+
 echo "🚀 Starting Gunicorn (workers=3, timeout=120s)..."
 exec gunicorn config.wsgi:application \
     --bind 0.0.0.0:8000 \
