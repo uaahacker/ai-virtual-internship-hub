@@ -57,13 +57,22 @@ One item per evaluated task. Unique on `task_evaluation`.
 
 ## URL Reference
 
-Portfolio is accessed via the tasks URL namespace (`/api/tasks/`):
+Portfolio has two access points:
+
+**Via the tasks namespace** (`/api/tasks/`):
 
 | Method | Path | Permission | Description |
 |--------|------|-----------|-------------|
 | GET | `/tasks/portfolios/me/` | Student | Own portfolio with all items |
 | GET | `/tasks/portfolios/:id/` | Authenticated | View another student's portfolio |
 | GET | `/tasks/portfolios/:id/stats/` | Authenticated | Portfolio statistics only |
+
+**Via the portfolios namespace** (`/api/portfolios/`):
+
+| Method | Path | Permission | Description |
+|--------|------|-----------|-------------|
+| GET | `/portfolios/me/` | Student | Own portfolio (same response, separate URL prefix) |
+| GET | `/portfolios/:id/` | Authenticated | View another student's portfolio |
 
 ---
 

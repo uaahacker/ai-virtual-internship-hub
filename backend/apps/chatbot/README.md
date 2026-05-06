@@ -82,18 +82,20 @@ All URLs prefixed with `/api/chatbot/`.
 
 ## AI Providers
 
-`apps/chatbot/providers.py` — multiple provider backends.
+`apps/chatbot/providers.py` — multiple provider backends with automatic fallback chain.
 
-The active provider is selected based on which API key is configured in `.env`.
+**Provider fallback chain: OpenRouter → OpenAI → Gemini → rule-based**
 
-| Provider | Env Variable | Notes |
-|----------|-------------|-------|
-| `openai` | `OPENAI_API_KEY` | GPT-3.5/GPT-4 via OpenAI API |
-| `gemini` | `GEMINI_API_KEY` | Google Gemini via Google AI API |
-| `openrouter` | `OPENROUTER_API_KEY` | Multiple models via OpenRouter |
-| `rule_based` | (none needed) | Fallback: keyword-matching responses |
+The service tries each provider in order, falling back to the next if an API key is missing or a call fails.
 
-The rule-based fallback answers common freelancing questions without any external API key, making the chatbot functional out of the box.
+| Priority | Provider | Env Variable | Notes |
+|----------|----------|-------------|-------|
+| 1 (primary) | `openrouter` | `OPENROUTER_API_KEY` | Access to many models (default: `mistralai/mistral-7b-instruct`) via OpenRouter |
+| 2 | `openai` | `OPENAI_API_KEY` | GPT-3.5/GPT-4 via OpenAI API |
+| 3 | `gemini` | `GEMINI_API_KEY` | Google Gemini via Google AI API |
+| 4 (fallback) | `rule_based` | (none needed) | Keyword-matching responses — always available |
+
+**OpenRouter is the recommended and default provider.** Set `OPENROUTER_API_KEY` in `.env` to enable it. The rule-based fallback answers common freelancing questions without any external API key, making the chatbot functional out of the box.
 
 ---
 

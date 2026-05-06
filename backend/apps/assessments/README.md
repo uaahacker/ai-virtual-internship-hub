@@ -10,10 +10,11 @@ The `assessments` app delivers domain-specific MCQ assessments, evaluates them w
 2. [URL Reference](#url-reference)
 3. [Assessment Flow](#assessment-flow)
 4. [Evaluation Engine](#evaluation-engine)
-5. [NLP Feedback Generator](#nlp-feedback-generator)
-6. [Domain Stats](#domain-stats)
-7. [Serializers](#serializers)
-8. [Management Commands](#management-commands)
+5. [Adaptive Testing (Q-Learning)](#adaptive-testing-q-learning)
+6. [NLP Feedback Generator](#nlp-feedback-generator)
+7. [Domain Stats](#domain-stats)
+8. [Serializers](#serializers)
+9. [Management Commands](#management-commands)
 
 ---
 
@@ -66,6 +67,7 @@ One student's completed attempt at an Assessment.
 | `feedback` | TextField | NLP-generated text feedback |
 | `recommended_task_type` | CharField | Design / Development / Content / etc. |
 | `next_steps` | JSONField | List of recommended focus areas |
+| `adaptive_order_used` | BooleanField | True if Q-Learning ordered the questions |
 | `completed_at` | DateTimeField | Auto-set |
 
 ---
@@ -93,7 +95,7 @@ All URLs prefixed with `/api/assessments/`.
 ## Assessment Flow
 
 ```
-1.  Student calls GET /assessments/:id/   → receives questions (correct_answer hidden)
+1.  Student calls GET /assessments/:id/questions/  → questions returned in Q-Learning order (or default order if Q-table unavailable)
 2.  Student answers questions
 3.  Student calls POST /assessments/:id/submit/
         body: { "answers": {"1": "a", "2": "c", ...} }
@@ -102,11 +104,38 @@ All URLs prefixed with `/api/assessments/`.
         b. NLPFeedbackGenerator.generate(result) → feedback text
         c. AssessmentAttempt saved with all scores
         d. StudentProfile updated:
-              - skill_scores_by_domain[domain] = domain_score
+              - skill_scores[domain] = domain_score
               - strongest_domain / weakest_domain recalculated
               - cluster updated via StudentClusterer.update_student_cluster()
+              - adaptive Q-table updated with correctness signal
 5.  Response: full attempt result including feedback, concept scores, readiness level
 ```
+
+---
+
+## Adaptive Testing (Q-Learning)
+
+`apps/assessments/adaptive_testing.py` — `AdaptiveTestingEngine`
+
+Questions within each domain assessment are served in an adaptively ordered sequence that maximises learning signal. The sequence is pre-computed before the student starts and stored in the API response.
+
+### Algorithm
+
+Tabular **Q-Learning** with Bellman update:
+```
+Q(s, a) += α × [r + γ × max(Q(s’, ·)) − Q(s, a)]
+```
+
+| Component | Detail |
+|-----------|--------|
+| **State space** | 4 states: `unknown` · `struggling` (acc<40%) · `on_track` (40–70%) · `excelling` (>70%) |
+| **Action space** | 3 difficulty actions: `easy` (weight<0.85) · `medium` (0.85–1.15) · `hard` (>1.15) |
+| **Rewards** | +1.0 correct Hard · +0.7 correct Medium · +0.3 correct Easy · −0.5 wrong Hard · −0.2 wrong Medium |
+| **Q-table** | Persisted at `backend/ml_models/adaptive_qtable.json` (4×3 matrix), updated after every submission |
+| **Starting state** | Derived from student’s 5 most recent attempt percentages for this domain |
+| **Fallback** | Default `order` field sequence when Q-table file is unavailable |
+
+The response JSON structure is **unchanged** — questions simply appear in optimal difficulty order. `AssessmentAttempt.adaptive_order_used` records whether Q-Learning was applied.
 
 ---
 
@@ -215,13 +244,13 @@ python manage.py seed_assessments
 ```
 
 Seeds assessments for all 10 supported domains:
+- Graphic Design
 - Web Development
-- Graphic Design  
-- Content Writing
 - Digital Marketing
+- Content Writing
 - Video Editing
 - Data Analysis
-- Mobile Development
 - UI/UX Design
-- Cybersecurity
-- Cloud Computing
+- SEO & Analytics
+- Social Media Management
+- WordPress

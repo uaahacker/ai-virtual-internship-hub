@@ -69,6 +69,8 @@ class AdminStatsView(APIView):
     ...
 ```
 
+The `submissions` app (which records raw task submission artefacts) uses the same `IsStudent` / `IsMentor` classes from this module.
+
 ---
 
 ## Custom Exception Handler

@@ -50,10 +50,12 @@ Links a student to a task they are working on. Created when student accepts a re
 |-------|------|-------|
 | `student` | ForeignKey → User | |
 | `task` | ForeignKey → Task | |
-| `status` | CharField | `accepted` / `in_progress` / `submitted` / `completed` |
+| `status` | CharField | `recommended` / `accepted` / `in_progress` / `completed` / `dropped` |
 | `progress_percentage` | IntegerField | 0–100 |
+| `recommendation_score` | FloatField | Hybrid AI score 0.0–1.0 |
+| `recommendation_explanation` | JSONField | `{match_reason, domain, content_score, collaborative_score, explanation[]}` |
 | `mentor_review_status` | CharField | `pending` / `reviewed` |
-| `mentor_feedback` | TextField | Text feedback from mentor (legacy field) |
+| `mentor_feedback` | TextField | Legacy text feedback field |
 | `assigned_at` | DateTimeField | |
 | `started_at` | DateTimeField (nullable) | |
 | `submitted_at` | DateTimeField (nullable) | |
@@ -175,7 +177,8 @@ All URLs prefixed with `/api/tasks/`.
 | GET | `analytics/student/` | Student | Personal analytics dashboard data |
 | GET | `analytics/mentor/` | Mentor | Mentor analytics dashboard data |
 | GET | `analytics/admin/` | Admin | System-wide analytics data |
-| GET | `analytics/domain-prediction/` | Student | ML domain prediction for student |
+| GET | `analytics/cluster-overview/` | Admin | KMeans cluster distribution across all students |
+| POST | `analytics/domain-prediction/` | Student | RF-predicted best next domain for the student |
 
 ### Portfolio
 
@@ -202,7 +205,7 @@ Student updates progress (PUT /tasks/assignments/:id/update/)
         ↓
 Student submits task (POST /tasks/assignments/:id/complete/)
    → TaskCompletion created with reflective_text
-   → assignment.status → submitted
+   → assignment.status → submitted (via completion service)
         ↓
 Student takes MCQ quiz (POST /tasks/completions/:id/submit-mcq/)
    → TaskMCQAttempt scored
@@ -213,11 +216,10 @@ Mentor sees in pending reviews (GET /api/auth/mentor/pending-reviews/)
         ↓
 Mentor evaluates (POST /tasks/evaluations/:id/evaluate/)
    → TaskEvaluation updated:
-         mentor_score, final_score = avg(mcq, mentor),
-         strengths/weaknesses/suggestions
-         status → evaluated
-         evaluated_by → mentor
+         mentor_score, final_score = avg(mcq_score, mentor_score),
+         strengths / suggestions, status → evaluated
    → assignment.mentor_review_status → reviewed
+   → assignment.status → completed
    → PortfolioItem auto-created/updated via PortfolioService
         ↓
 Student views result (GET /tasks/evaluations/:id/)
@@ -232,20 +234,23 @@ Student views portfolio (GET /tasks/portfolios/me/)
 
 ### Content-Based Recommender
 
-- Builds a **30-dimensional feature vector** for each task:
-  - 10 dimensions: domain one-hot encoding
-  - 10 dimensions: required skills (TF-IDF style)
-  - 10 dimensions: learning outcomes keywords
-- Builds a matching **student vector** from `StudentProfile.skill_scores_by_domain` + accepted task history
-- Scores tasks via **cosine similarity** between student vector and task vector
-- Returns similarity score in [0, 1]
+- Builds a **30-dimensional feature vector** for each student and each task:
+  - `[0:10]` Domain MCQ scores (with concept mastery boost applied)
+  - `[10:20]` Skill-level encodings
+  - `[20:30]` Preferred-domain one-hots (boosted by log-scaled completion history)
+- Scores tasks via **cosine similarity** between student profile vector and task feature vector
+- Returns `content_score` in [0, 1]
 
-### Collaborative Filter (KNN)
+### Collaborative Filtering (KNN)
 
-- Builds a **Student × Task matrix** from `TaskMCQAttempt` scores
-- Uses `sklearn.neighbors.NearestNeighbors` (K=5, cosine metric) to find similar students
-- Predicts score for unseen tasks based on neighbour ratings
-- Fallback: returns 0 when insufficient data (< 5 students or new student)
+- Builds a **Student × Task interaction matrix** where each cell = interaction score:
+  - Status contribution: recommended=10, accepted=30, in_progress=50, completed=65
+  - MCQ blend (×0.35 weight)
+  - Mentor review adjustment: +10 (approved) / −8 (needs_revision)
+- Student similarity = 55% interaction-cosine + 45% domain-profile-cosine
+- Uses `sklearn.neighbors.NearestNeighbors` **(K=7**, cosine metric, minimum 1 shared task)
+- Predicts score for unseen tasks based on neighbour task ratings
+- Fallback: returns 0 when < 3 students have interactions or student is new
 
 ### Hybrid Scoring
 
@@ -253,7 +258,20 @@ Student views portfolio (GET /tasks/portfolios/me/)
 final_score = 0.6 * content_score + 0.4 * collaborative_score
 ```
 
-Tasks already accepted by the student are excluded. The top-10 by `final_score` are returned.
+Tasks already accepted or completed by the student are excluded. The top-10 by `final_score` are returned with a `recommendation_explanation` JSON:
+
+```json
+{
+  "match_reason": "Strong match in Web Development",
+  "domain": "Web Development",
+  "content_score": 0.91,
+  "collaborative_score": 0.79,
+  "explanation": [
+    "Top performers in your domain completed this task",
+    "Matches your skill profile"
+  ]
+}
+```
 
 ---
 
@@ -261,9 +279,9 @@ Tasks already accepted by the student are excluded. The top-10 by `final_score` 
 
 `apps/tasks/ml_engine.py` — `StudentClusterer`
 
-- **Algorithm**: KMeans (4 clusters) from `sklearn.cluster`
-- **Input**: 10-dim domain score vector (one score per domain, from `StudentProfile.skill_scores_by_domain`)
-- **Cluster Labels** (assigned by centroid distance and sorted by mean score):
+- **Algorithm**: KMeans (K=4 clusters) from `sklearn.cluster`
+- **Input**: 10-dim domain score vector (one score per domain, from `StudentProfile.skill_scores`)
+- **Cluster Labels** (assigned by centroid mean score, ascending):
 
   | Cluster | Label |
   |---------|-------|
@@ -272,8 +290,9 @@ Tasks already accepted by the student are excluded. The top-10 by `final_score` 
   | 3rd | Competent |
   | Highest centroid | Expert |
 
-- **Trigger**: Called by assessment app after each `AssessmentAttempt`
-- **Persistence**: Cluster parameters are derived from all student data in the DB at each call — no model file saved for clustering
+- **Trigger**: Called by the assessments app after each `AssessmentAttempt` is saved
+- **Persistence**: Re-trained in-memory on every call from live DB data — no model file saved. Results written to `StudentProfile.cluster_id`, `.cluster_label`, `.cluster_summary`
+- **Admin endpoint**: `GET /tasks/analytics/cluster-overview/` returns cluster distribution across all students
 
 ---
 
@@ -315,10 +334,12 @@ Saved to `backend/ml_models/domain_predictor.pkl` + `domain_predictor_meta.json`
 `apps/tasks/collaborative_filtering.py`
 
 Standalone module providing user-based KNN collaborative filtering:
-- Constructs the student × task score matrix from `TaskMCQAttempt` records
-- Fills missing scores with 0 (implicit negative signal)
-- Uses `sklearn.neighbors.NearestNeighbors` with cosine distance
+- Constructs the student × task interaction matrix from `TaskAssignment` and `TaskMCQAttempt` records
+- Interaction score blends status, MCQ score (×0.35), and mentor review adjustment
+- Uses `sklearn.neighbors.NearestNeighbors` with cosine distance, **K=7**
+- Student similarity = 55% interaction-cosine + 45% domain-profile-cosine
 - Returns estimated scores for tasks the target student has not yet attempted
+- Minimum 1 shared task required between student pairs; returns 0 score when no neighbours found
 
 ---
 

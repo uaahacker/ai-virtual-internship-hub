@@ -109,7 +109,7 @@ Notifications are created programmatically by other apps when events occur:
 | New announcement | All targeted users |
 | Direct message received | Recipient |
 
-**Frontend polling**: `NotificationContext.jsx` polls `GET /api/notifications/unread-count/` every **30 seconds** and refreshes the notification list when the count changes.
+**Frontend polling**: `NotificationContext.jsx` polls `GET /api/notifications/unread-count/` every **30 seconds** and refreshes the notification list when the count changes. `DashboardLayout.jsx` subscribes to the context to display an unread count badge on the Notifications sidebar link.
 
 ---
 
