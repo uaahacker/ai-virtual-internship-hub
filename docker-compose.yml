@@ -55,6 +55,8 @@ services:
     volumes:
       # Django admin static files (collected by backend)
       - static_files:/app/staticfiles:ro
+      # User-uploaded media files (profile pictures, etc.)
+      - media_files:/app/media:ro
       # Let's Encrypt SSL certificates
       - ./nginx/certbot/conf:/etc/letsencrypt:ro
       # Certbot ACME challenge webroot
