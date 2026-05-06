@@ -7,6 +7,8 @@ import LandingPage from './pages/LandingPage';
 // Auth pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 // Dashboard pages
 import StudentDashboard from './pages/StudentDashboard';
@@ -55,6 +57,7 @@ import MentorTaskMCQPage from './pages/MentorTaskMCQPage';
 // New feature pages
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import DirectChatPage from './pages/DirectChatPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 // Settings pages
 import StudentSettingsPage from './pages/StudentSettingsPage';
@@ -89,6 +92,8 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={!user ? <LoginPage /> : <Navigate to={getDashboardPath(user.role)} />} />
       <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to={getDashboardPath(user.role)} />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Student routes */}
       <Route path="/student/dashboard" element={<ProtectedRoute role="Student"><StudentDashboard /></ProtectedRoute>} />
@@ -108,6 +113,7 @@ function App() {
       <Route path="/student/settings" element={<ProtectedRoute role="Student"><StudentSettingsPage /></ProtectedRoute>} />
       <Route path="/student/announcements" element={<ProtectedRoute role="Student"><AnnouncementsPage /></ProtectedRoute>} />
       <Route path="/student/mentor-chat" element={<ProtectedRoute role="Student"><DirectChatPage /></ProtectedRoute>} />
+      <Route path="/student/notifications" element={<ProtectedRoute role="Student"><NotificationsPage /></ProtectedRoute>} />
 
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={<ProtectedRoute role="Mentor"><MentorDashboard /></ProtectedRoute>} />
@@ -125,6 +131,7 @@ function App() {
       <Route path="/mentor/settings" element={<ProtectedRoute role="Mentor"><MentorSettingsPage /></ProtectedRoute>} />
       <Route path="/mentor/announcements" element={<ProtectedRoute role="Mentor"><AnnouncementsPage /></ProtectedRoute>} />
       <Route path="/mentor/students/:studentId/chat" element={<ProtectedRoute role="Mentor"><DirectChatPage /></ProtectedRoute>} />
+      <Route path="/mentor/notifications" element={<ProtectedRoute role="Mentor"><NotificationsPage /></ProtectedRoute>} />
 
       {/* Admin routes */}
       <Route path="/admin/dashboard" element={<ProtectedRoute role="Admin"><AdminDashboard /></ProtectedRoute>} />

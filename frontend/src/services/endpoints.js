@@ -5,6 +5,10 @@ export const authService = {
   login: (data) => api.post('/auth/login', data),
   logout: (refresh) => api.post('/auth/logout', { refresh }),
   getMe: () => api.get('/auth/me'),
+  forgotPassword: (email) => api.post('/auth/forgot-password/', { email }),
+  resetPassword: (token, newPassword, newPasswordConfirm) =>
+    api.post('/auth/reset-password/', { token, new_password: newPassword, new_password_confirm: newPasswordConfirm }),
+  resendVerification: (email) => api.post('/auth/resend-verification/', { email }),
 };
 
 export const assessmentService = {

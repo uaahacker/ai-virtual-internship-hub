@@ -47,11 +47,23 @@ class LoginSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """Read-only user representation."""
+    profile_picture_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'name', 'email', 'role', 'status', 'created_at']
+        fields = ['id', 'name', 'email', 'role', 'status', 'created_at', 'profile_picture_url']
         read_only_fields = fields
+
+    def get_profile_picture_url(self, obj):
+        if not obj.profile_picture:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.profile_picture.url)
+        # Fallback: build URL from MEDIA_URL without request
+        from django.conf import settings
+        base = getattr(settings, 'MEDIA_BASE_URL', '').rstrip('/')
+        return f"{base}{obj.profile_picture.url}" if base else obj.profile_picture.url
 
 
 class StudentProfileSerializer(serializers.ModelSerializer):
@@ -169,6 +181,27 @@ class ChangePasswordSerializer(serializers.Serializer):
         validate_password(value)
         return value
     
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})
+        return attrs
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    """Accepts an email and generates a password-reset token."""
+    email = serializers.EmailField()
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    """Validates the reset token and new passwords."""
+    token = serializers.UUIDField()
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    new_password_confirm = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_new_password(self, value):
+        validate_password(value)
+        return value
+
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})

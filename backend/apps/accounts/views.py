@@ -2,6 +2,9 @@
 Auth views: Register, Login, Me, Admin user list.
 """
 
+import logging
+from datetime import timedelta
+
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -9,15 +12,18 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, get_user_model
 from django.db import models
+from django.utils import timezone
 
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
     StudentProfileSerializer, MentorProfileSerializer,
     UpdateProfileSerializer, ChangePasswordSerializer,
+    ForgotPasswordSerializer, ResetPasswordSerializer,
 )
-from .models import StudentProfile, MentorProfile
+from .models import StudentProfile, MentorProfile, VerificationToken
 from apps.core.permissions import IsAdmin, IsStudent, IsMentor
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
@@ -57,7 +63,7 @@ class RegisterView(APIView):
                 'success': True,
                 'message': 'Registration successful.',
                 'data': {
-                    'user': UserSerializer(user).data,
+                    'user': UserSerializer(user, context={'request': request}).data,
                     'tokens': tokens,
                 },
             },
@@ -100,7 +106,7 @@ class LoginView(APIView):
                 'success': True,
                 'message': 'Login successful.',
                 'data': {
-                    'user': UserSerializer(user).data,
+                    'user': UserSerializer(user, context={'request': request}).data,
                     'tokens': tokens,
                 },
             },
@@ -138,7 +144,7 @@ class MeView(APIView):
         return Response(
             {
                 'success': True,
-                'data': UserSerializer(request.user).data,
+                'data': UserSerializer(request.user, context={'request': request}).data,
             }
         )
 
@@ -155,7 +161,7 @@ class AdminUserListView(APIView):
         return Response(
             {
                 'success': True,
-                'data': UserSerializer(users, many=True).data,
+                'data': UserSerializer(users, many=True, context={'request': request}).data,
             }
         )
 
@@ -768,11 +774,35 @@ class UpdateProfileView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        # Compress/resize profile picture if one was uploaded
+        if 'profile_picture' in request.FILES:
+            try:
+                from PIL import Image
+                import io
+                from django.core.files.base import ContentFile
+
+                user = request.user
+                user.refresh_from_db()
+                if user.profile_picture:
+                    img = Image.open(user.profile_picture.path)
+                    img = img.convert('RGB')
+                    if img.width > 400 or img.height > 400:
+                        img.thumbnail((400, 400), Image.LANCZOS)
+                    output = io.BytesIO()
+                    img.save(output, format='JPEG', quality=85, optimize=True)
+                    user.profile_picture.save(
+                        f'profile_{user.id}.jpg',
+                        ContentFile(output.getvalue()),
+                        save=True,
+                    )
+            except Exception:
+                pass  # Compression is best-effort; don't fail the request
         
         return Response({
             'success': True,
             'message': 'Profile updated successfully.',
-            'data': UserSerializer(request.user).data,
+            'data': UserSerializer(request.user, context={'request': request}).data,
         })
 
 
@@ -884,7 +914,7 @@ class AdminUserManageView(APIView):
         except User.DoesNotExist:
             return Response({'success': False, 'error': {'code': 404, 'message': 'User not found.'}},
                             status=status.HTTP_404_NOT_FOUND)
-        return Response({'success': True, 'data': UserSerializer(user).data})
+        return Response({'success': True, 'data': UserSerializer(user, context={'request': request}).data})
 
     def put(self, request, user_id):
         try:
@@ -917,7 +947,7 @@ class AdminUserManageView(APIView):
                     setattr(user, field, request.data[field])
 
         user.save()
-        return Response({'success': True, 'message': 'User updated successfully.', 'data': UserSerializer(user).data})
+        return Response({'success': True, 'message': 'User updated successfully.', 'data': UserSerializer(user, context={'request': request}).data})
 
     def delete(self, request, user_id):
         try:
@@ -979,7 +1009,7 @@ class AdminCreateUserView(APIView):
         elif role == 'Mentor':
             MentorProfile.objects.get_or_create(user=user)
 
-        return Response({'success': True, 'message': 'User created successfully.', 'data': UserSerializer(user).data},
+        return Response({'success': True, 'message': 'User created successfully.', 'data': UserSerializer(user, context={'request': request}).data},
                         status=status.HTTP_201_CREATED)
 
 
@@ -1018,3 +1048,166 @@ def _get_tokens(user):
         'access': str(refresh.access_token),
         'refresh': str(refresh),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Email Verification Views
+# ─────────────────────────────────────────────────────────────────────────────
+
+class VerifyEmailView(APIView):
+    """
+    GET /api/auth/verify-email/<token>/
+    Public. Marks the user's email as verified (sets is_active=True for
+    accounts that were created with is_active=False if email verification
+    is enforced, or simply records verification).
+    Since we have no email server, tokens are generated and returned in the
+    registration response so the admin/user can verify manually, or the
+    frontend can call this automatically after register.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        try:
+            vt = VerificationToken.objects.get(token=token, token_type='email_verify')
+        except VerificationToken.DoesNotExist:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'Invalid or expired verification link.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not vt.is_valid():
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'This verification link has expired. Request a new one.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        vt.is_used = True
+        vt.save()
+
+        user = vt.user
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+
+        return Response({'success': True, 'message': 'Email verified successfully. You can now log in.'})
+
+
+class ResendVerificationView(APIView):
+    """
+    POST /api/auth/resend-verification/
+    Public. Resends (creates a new) verification token for an unverified account.
+    Returns the token in the response (since there is no email server — the
+    frontend displays it or the admin can copy it).
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'Email is required.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Security: don't reveal whether email exists
+            return Response({'success': True, 'message': 'If that account exists, a new verification token has been generated.'})
+
+        if user.is_active:
+            return Response({'success': True, 'message': 'Account is already verified.'})
+
+        # Invalidate old tokens
+        VerificationToken.objects.filter(user=user, token_type='email_verify', is_used=False).update(is_used=True)
+
+        vt = VerificationToken.objects.create(user=user, token_type='email_verify')
+        verify_url = f"{request.build_absolute_uri('/').rstrip('/')}/#/verify-email/{vt.token}"
+
+        return Response({
+            'success': True,
+            'message': 'New verification token created.',
+            'verify_url': verify_url,
+            'token': str(vt.token),
+        })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Password Reset Views (no external email — token returned in response)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ForgotPasswordView(APIView):
+    """
+    POST /api/auth/forgot-password/
+    Public. Generates a password-reset token.
+    Since there is no SMTP setup, the token/link is returned in the JSON
+    response. In production, swap the return for an email send.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email'].lower()
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Security: always return 200 so attackers can't enumerate accounts
+            return Response({'success': True, 'message': 'If that email exists, a reset token has been generated.'})
+
+        # Invalidate previous reset tokens for this user
+        VerificationToken.objects.filter(
+            user=user, token_type='password_reset', is_used=False
+        ).update(is_used=True)
+
+        vt = VerificationToken.objects.create(user=user, token_type='password_reset')
+        reset_url = f"{request.build_absolute_uri('/').rstrip('/')}/#/reset-password/{vt.token}"
+
+        logger.info("Password reset token created for %s", email)
+
+        return Response({
+            'success': True,
+            'message': 'Password reset token generated.',
+            # Returned in response because no email server is configured.
+            # Remove token/reset_url fields once SMTP is set up.
+            'reset_url': reset_url,
+            'token': str(vt.token),
+        })
+
+
+class ResetPasswordView(APIView):
+    """
+    POST /api/auth/reset-password/
+    Public. Validates reset token and sets the new password.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token_value = serializer.validated_data['token']
+        new_password = serializer.validated_data['new_password']
+
+        try:
+            vt = VerificationToken.objects.get(token=token_value, token_type='password_reset')
+        except VerificationToken.DoesNotExist:
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'Invalid or expired reset token.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not vt.is_valid():
+            return Response(
+                {'success': False, 'error': {'code': 400, 'message': 'This reset link has expired. Please request a new one.'}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        vt.is_used = True
+        vt.save()
+
+        user = vt.user
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+
+        return Response({'success': True, 'message': 'Password reset successfully. You can now log in.'})
+

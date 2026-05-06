@@ -148,7 +148,9 @@ export default function TaskCard({
           {taskData.difficulty}
         </span>
         <span className="text-xs text-gray-500">
-          ⏱ {taskData.estimated_duration} mins
+          ⏱ {taskData.estimated_duration >= 60
+            ? `${Math.floor(taskData.estimated_duration / 60)}h${taskData.estimated_duration % 60 ? ` ${taskData.estimated_duration % 60}m` : ''}`
+            : `${taskData.estimated_duration}m`}
         </span>
         {taskData.task_type && (
           <span className="text-xs text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded">

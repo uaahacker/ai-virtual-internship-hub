@@ -4,6 +4,8 @@ Root URL configuration.
 
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('django-admin/', admin.site.urls),
@@ -15,3 +17,7 @@ urlpatterns = [
     path('api/portfolios/', include('apps.portfolios.urls')),
     path('api/submissions/', include('apps.submissions.urls')),
 ]
+
+# Serve media files in development (nginx handles this in production)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

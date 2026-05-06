@@ -132,6 +132,16 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # ---------------------------------------------------------------------------
+# Media files (user-uploaded content — profile pictures etc.)
+# ---------------------------------------------------------------------------
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Used by UserSerializer when request context is not available
+MEDIA_BASE_URL = os.getenv('MEDIA_BASE_URL', '')  # e.g. https://vihub.site
+
+# ---------------------------------------------------------------------------
 # Default primary key field type
 # ---------------------------------------------------------------------------
 

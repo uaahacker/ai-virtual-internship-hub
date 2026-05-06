@@ -12,6 +12,7 @@ from .views import (
     MentorAvailableStudentsView, MentorSelfAssignStudentView, MentorUnassignStudentView,
     AutoAssignMentorView, UpdateProfileView, ChangePasswordView,
     AdminStatsView, AdminUserManageView, AdminCreateUserView, AdminResetPasswordView,
+    VerifyEmailView, ResendVerificationView, ForgotPasswordView, ResetPasswordView,
 )
 
 urlpatterns = [
@@ -19,6 +20,14 @@ urlpatterns = [
     path('login', LoginView.as_view(), name='auth-login'),
     path('logout', LogoutView.as_view(), name='auth-logout'),
     path('me', MeView.as_view(), name='auth-me'),
+
+    # Email verification
+    path('verify-email/<uuid:token>/', VerifyEmailView.as_view(), name='verify-email'),
+    path('resend-verification/', ResendVerificationView.as_view(), name='resend-verification'),
+
+    # Password reset (no SMTP — token returned in response)
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
+    path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     
     # Account settings
     path('profile/update/', UpdateProfileView.as_view(), name='update-profile'),

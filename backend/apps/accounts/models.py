@@ -5,6 +5,7 @@ Collection: users
 Fields: id, name, email (unique), password_hash, role, status, created_at
 """
 
+import uuid
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
@@ -199,3 +200,41 @@ class MentorProfile(models.Model):
 
     def __str__(self):
         return f"Mentor Profile: {self.user.name}"
+
+
+class VerificationToken(models.Model):
+    """
+    Single-use tokens for email verification and password reset.
+    token_type: 'email_verify' | 'password_reset'
+    """
+    TOKEN_TYPES = [
+        ('email_verify', 'Email Verification'),
+        ('password_reset', 'Password Reset'),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='verification_tokens',
+    )
+    token = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
+    token_type = models.CharField(max_length=20, choices=TOKEN_TYPES)
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+    # Tokens expire after 24 hours
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        db_table = 'verification_tokens'
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            from datetime import timedelta
+            self.expires_at = timezone.now() + timedelta(hours=24)
+        super().save(*args, **kwargs)
+
+    def is_valid(self):
+        return not self.is_used and timezone.now() < self.expires_at
+
+    def __str__(self):
+        return f"{self.token_type} token for {self.user.email}"

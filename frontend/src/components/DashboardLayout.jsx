@@ -94,9 +94,17 @@ export default function DashboardLayout({ children }) {
         {/* User Info */}
         <div className="p-4 border-t border-slate-700 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center font-bold">
-              {user?.name?.charAt(0)?.toUpperCase()}
-            </div>
+            {user?.profile_picture_url ? (
+              <img
+                src={user.profile_picture_url}
+                alt={user.name}
+                className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-600"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center font-bold">
+                {user?.name?.charAt(0)?.toUpperCase()}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{user?.name}</p>
               <p className="text-xs text-slate-400 capitalize">{user?.role?.toLowerCase()}</p>
@@ -239,6 +247,7 @@ function getNavItems(role) {
         { path: '/student/portfolio', label: 'Portfolio', icon: '🎨' },
         { path: '/student/analytics', label: 'Analytics', icon: '📈' },
         { path: '/student/chat', label: 'AI Chat', icon: '🤖' },
+        { path: '/student/notifications', label: 'Notifications', icon: '🔔' },
         { path: '/student/announcements', label: 'Announcements', icon: '📢' },
         { path: '/student/mentor-chat', label: 'Mentor Chat', icon: '💬' },
       ];
@@ -251,6 +260,7 @@ function getNavItems(role) {
         { path: '/mentor/reviews', label: 'Reviews', icon: '📋' },
         { path: '/mentor/analytics', label: 'Analytics', icon: '📈' },
         { path: '/mentor/chat', label: 'AI Assistant', icon: '🤖' },
+        { path: '/mentor/notifications', label: 'Notifications', icon: '🔔' },
         { path: '/mentor/announcements', label: 'Announcements', icon: '📢' },
       ];
     case 'Admin':

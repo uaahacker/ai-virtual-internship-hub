@@ -365,7 +365,20 @@ export default function PortfolioPage() {
       <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6 mb-6">
         <div className="">
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex items-start gap-4">
+              {/* Profile picture */}
+              {user?.profile_picture_url ? (
+                <img
+                  src={user.profile_picture_url}
+                  alt={user.name}
+                  className="w-16 h-16 rounded-full object-cover ring-2 ring-blue-200 shrink-0 print:w-12 print:h-12"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-2xl font-bold shrink-0 print:w-12 print:h-12">
+                  {user?.name?.charAt(0)?.toUpperCase()}
+                </div>
+              )}
+              <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {portfolio.title || `${user?.name || 'My'}'s Portfolio`}
               </h1>
@@ -374,6 +387,7 @@ export default function PortfolioPage() {
               {portfolio.is_public && (
                 <span className="inline-block mt-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">🌐 Public</span>
               )}
+            </div>
             </div>
             <div className="flex gap-2 print:hidden">
               <button onClick={() => setEditMode(!editMode)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
