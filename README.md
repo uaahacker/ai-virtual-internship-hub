@@ -15,12 +15,13 @@
 7. [Backend — Django REST API](#backend--django-rest-api)
 8. [Frontend — React/Vite SPA](#frontend--reactvite-spa)
 9. [AI & ML Capabilities](#ai--ml-capabilities)
-10. [Key Workflows](#key-workflows)
-11. [API Overview](#api-overview)
-12. [User Roles](#user-roles)
-13. [Database Schema](#database-schema)
-14. [Environment Variables](#environment-variables)
-15. [Running Tests & Management Commands](#running-tests--management-commands)
+10. [Datasets](#datasets)
+11. [Key Workflows](#key-workflows)
+12. [API Overview](#api-overview)
+13. [User Roles](#user-roles)
+14. [Database Schema](#database-schema)
+15. [Environment Variables](#environment-variables)
+16. [Running Tests & Management Commands](#running-tests--management-commands)
 
 ---
 
@@ -383,6 +384,10 @@ Results stored in `AIEvaluation` model (OneToOne → Submission). Students see s
   - `[10]` Task completion rate
   - `[11]` Improvement trend (normalized slope)
   - `[12]` Average task MCQ score
+- **Three training data sources** (combined):
+  1. Real student records from PostgreSQL
+  2. `backend/datasets/student_performance.csv` — 500 rows (see §Datasets)
+  3. Synthetic seed data for cold-start coverage
 - Trained via `python manage.py train_domain_model`
 - Serialized to `backend/ml_models/domain_predictor.pkl`
 
@@ -391,6 +396,70 @@ Results stored in `AIEvaluation` model (OneToOne → Submission). Students see s
 
 - User-based KNN on student × task interaction matrix
 - Recommends tasks completed by similar students
+
+### 9. Adaptive Testing — Q-Learning (RL)
+`backend/apps/assessments/adaptive_testing.py`
+
+Questions within each assessment are served in an **adaptively ordered** sequence computed by a tabular Q-Learning agent.
+
+| Component | Detail |
+|-----------|--------|
+| **Algorithm** | Q-Learning (tabular, Bellman update) |
+| **State space** | 4 states: Unknown, Struggling (acc < 40%), On-track (40–70%), Excelling (>70%) |
+| **Action space** | 3 actions: Easy (weight < 0.85), Medium (0.85–1.15), Hard (weight > 1.15) |
+| **Reward** | +1.0 correct Hard / +0.7 correct Medium / +0.3 correct Easy / −0.5 wrong Hard / −0.2 wrong Medium |
+| **Q-table** | Persisted at `backend/ml_models/adaptive_qtable.json`, updated after every submission |
+| **Starting state** | Derived from student's 5 most recent attempt percentages |
+| **Fallback** | If Q-table or module is unavailable, questions return in default `order` field sequence |
+
+The frontend API response format is **unchanged** — students receive the same JSON structure; questions simply appear in an optimal difficulty order.
+
+---
+
+## Datasets
+
+Three curated datasets power the ML pipeline.  All files live in `backend/datasets/`.
+
+### `student_performance.csv` — 500 rows
+Modelled on **Upwork Skills Index 2024** and **Freelancer.com Annual Market Report 2024**.
+
+| Column | Description |
+|--------|-------------|
+| `Graphic Design` … `WordPress` | Domain MCQ score (0–100) for each of the 10 VIHub domains |
+| `completion_rate` | Task completion rate (0–1) |
+| `improvement_trend` | Score slope across attempts (normalized, −1 to +1) |
+| `avg_mcq_score` | Mean MCQ score across all domains |
+| `recommended_domain` | Ground-truth label (the domain with highest market demand for that profile) |
+
+Directly maps to the 13-feature vector consumed by `domain_predictor.py`.
+
+### `freelancer_skills.csv` — 74 rows
+Curated from **Kaggle "Freelancer Job Postings 2024"** dataset and Upwork category taxonomy.
+
+| Column | Description |
+|--------|-------------|
+| `job_title` | Freelancing job title |
+| `primary_domain` | Primary VIHub domain match |
+| `skill_1` … `skill_4` | Required skills |
+| `avg_hourly_rate_usd` | Market hourly rate (USD) |
+| `demand_score` | Relative demand (0–100) |
+
+Used by `dataset_loader.get_domain_skill_weights()` to enrich task-skill relevance in the recommendation engine.
+
+### `text_quality_samples.csv` — 50 rows
+Annotated writing samples with ground-truth scores based on **Grammarly Blog readability benchmarks**.
+
+| Column | Description |
+|--------|-------------|
+| `text_excerpt` | Writing sample text |
+| `approx_flesch_score` | Flesch Reading Ease score (0–100) |
+| `grammar_issues` | Count of grammar issues |
+| `vocabulary_diversity_pct` | Type-Token Ratio × 100 |
+| `quality_label` | Needs Work / Satisfactory / Good / Excellent |
+
+Used to validate `submissions/evaluation_service.py` thresholds against real-world benchmarks.
+
+To regenerate all datasets: `python backend/generate_datasets.py`
 
 ---
 

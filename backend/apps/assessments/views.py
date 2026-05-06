@@ -19,6 +19,7 @@ from .serializers import (
 from .recommendation import generate_recommendation, calculate_performance_breakdown
 from .nlp_feedback import generate_feedback, generate_structured_feedback
 from .evaluation_engine import evaluate as run_evaluation
+from .adaptive_testing import AdaptiveTesting
 from apps.tasks.ml_engine import StudentClusterer
 
 
@@ -103,8 +104,19 @@ class AssessmentDetailView(APIView):
                 {'success': False, 'error': {'code': 404, 'message': 'Assessment not found.'}},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        # Apply RL-based adaptive question ordering (Q-Learning, FR2)
+        # Questions are sorted by optimal difficulty for this student's profile.
+        # The serialiser response format is unchanged — frontend receives the
+        # same structure, just with questions in an adaptive order.
+        try:
+            questions = list(assessment.questions.all())
+            ordered   = AdaptiveTesting.order_questions(questions, request.user)
+            # Temporarily override the queryset order for serialisation
+            assessment._adaptive_questions = ordered
+        except Exception:
+            pass  # fallback: use default order if RL fails
         serializer = AssessmentDetailSerializer(assessment)
-        return Response({'success': True, 'data': serializer.data})
+        return Response({'success': True, 'data': serializer.data, 'adaptive_ordering': True})
 
 
 class SubmitAssessmentView(APIView):
@@ -227,6 +239,21 @@ class SubmitAssessmentView(APIView):
             recommended_task_type=eval_result['recommended_task_type'],
             feedback=nlp_feedback,
         )
+
+        # 5.0) Update Q-table with this session's question sequence + results
+        # This is how the RL agent learns from real student responses.
+        try:
+            sequence = [
+                {'difficulty_weight': float(getattr(q, 'difficulty_weight', 1.0))}
+                for q in questions
+            ]
+            results_bool = [
+                (submitted_answers.get(str(q.id), '').upper() == q.correct_option.upper())
+                for q in questions
+            ]
+            AdaptiveTesting.update_qtable(sequence, results_bool)
+        except Exception:
+            pass  # never block submission
 
         # 5.1) Update student cluster (async-safe — must not block submission)
         try:

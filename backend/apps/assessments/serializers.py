@@ -31,12 +31,24 @@ class AssessmentListSerializer(serializers.ModelSerializer):
 
 
 class AssessmentDetailSerializer(serializers.ModelSerializer):
-    """Full assessment with questions (no correct answers exposed)."""
-    questions = QuestionListSerializer(many=True, read_only=True)
+    """
+    Full assessment with questions (no correct answers exposed).
+
+    When AdaptiveTesting pre-computes an ordering it stores the sorted list
+    on the instance as ``_adaptive_questions``.  We serve those; otherwise
+    fall back to the default ``order`` field ordering.
+    """
+    questions = serializers.SerializerMethodField()
 
     class Meta:
         model = Assessment
         fields = ['id', 'title', 'domain', 'description', 'time_limit', 'questions']
+
+    def get_questions(self, obj):
+        qs = getattr(obj, '_adaptive_questions', None)
+        if qs is None:
+            qs = obj.questions.all()
+        return QuestionListSerializer(qs, many=True).data
 
 
 class SubmitAnswersSerializer(serializers.Serializer):

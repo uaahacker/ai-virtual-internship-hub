@@ -1,0 +1,75 @@
+job_title,primary_domain,secondary_domain,skill_1,skill_2,skill_3,skill_4,avg_hourly_rate_usd,experience_level,demand_score,task_type
+Logo Designer,Graphic Design,Digital Marketing,Adobe Illustrator,CorelDRAW,Typography,Brand Identity,28,Beginner,8,Design
+UI Designer,Graphic Design,Programming,Figma,Adobe XD,Wireframing,Prototyping,45,Intermediate,9,Design
+Social Media Graphic Designer,Graphic Design,Digital Marketing,Canva,Photoshop,Color Theory,Template Design,22,Beginner,9,Design
+Brand Identity Designer,Graphic Design,Digital Marketing,Adobe Illustrator,InDesign,Branding,Visual Identity,55,Advanced,7,Design
+Infographic Designer,Graphic Design,Data Analytics,Adobe Illustrator,PowerPoint,Data Visualization,Canva,35,Intermediate,7,Design
+Motion Graphics Designer,Graphic Design,Digital Marketing,After Effects,Premiere Pro,Animation,Storyboarding,60,Advanced,6,Design
+Print Design Specialist,Graphic Design,E-Commerce,InDesign,Photoshop,Print Production,Color Profiles,32,Intermediate,5,Design
+Product Packaging Designer,Graphic Design,E-Commerce,Illustrator,3D Mockups,Dieline Design,Print-Ready Files,48,Advanced,6,Design
+Presentation Designer,Graphic Design,Freelancing,PowerPoint,Keynote,Canva,Data Visualization,30,Beginner,8,Design
+Photo Editor,Graphic Design,E-Commerce,Photoshop,Lightroom,Retouching,Color Grading,25,Beginner,7,Design
+Blog Content Writer,Content Writing,Digital Marketing,SEO Writing,Keyword Research,WordPress,Copywriting,20,Beginner,9,Writing
+Technical Writer,Content Writing,Programming,API Documentation,Markdown,DITA,Technical Research,50,Advanced,7,Writing
+Copywriter,Content Writing,Digital Marketing,Ad Copy,Email Marketing,Landing Pages,A/B Testing,45,Intermediate,8,Writing
+Social Media Content Creator,Content Writing,Digital Marketing,Content Strategy,Hashtag Research,Engagement Writing,Brand Voice,25,Beginner,9,Writing
+Product Description Writer,Content Writing,E-Commerce,SEO,Persuasive Writing,Amazon Listing,Shopify,20,Beginner,8,Writing
+Grant Writer,Content Writing,Freelancing,Proposal Writing,Research,Nonprofit Writing,Budget Justification,55,Advanced,5,Writing
+Ghostwriter,Content Writing,Freelancing,Long-form Writing,Research,Interview Techniques,Editing,60,Advanced,6,Writing
+Resume/CV Writer,Content Writing,Freelancing,ATS Optimization,Career Coaching,LinkedIn Profiles,Cover Letters,30,Intermediate,7,Writing
+Email Newsletter Writer,Content Writing,Digital Marketing,Mailchimp,Drip Campaigns,Segmentation,CTA Writing,28,Intermediate,8,Writing
+Scriptwriter,Content Writing,Digital Marketing,Video Scripts,Storytelling,YouTube SEO,Podcast Scripts,35,Intermediate,6,Writing
+Full-Stack Web Developer,Programming,E-Commerce,React,Node.js,PostgreSQL,REST APIs,75,Advanced,9,Development
+Frontend Developer,Programming,Graphic Design,React,Tailwind CSS,TypeScript,Figma,55,Intermediate,9,Development
+Backend Developer,Programming,Data Analytics,Django,FastAPI,PostgreSQL,Docker,65,Advanced,8,Development
+Python Developer,Programming,Data Analytics,Python,Django,pandas,scikit-learn,60,Intermediate,9,Development
+WordPress Developer,Programming,WordPress,PHP,WordPress,WooCommerce,CSS,40,Intermediate,8,Development
+Mobile App Developer,Programming,E-Commerce,React Native,Flutter,Firebase,REST APIs,70,Advanced,8,Development
+API Developer,Programming,E-Commerce,REST,GraphQL,Node.js,Authentication,65,Advanced,7,Development
+Shopify Developer,Programming,E-Commerce,Liquid,JavaScript,Shopify APIs,Theme Development,55,Intermediate,8,Development
+Automation/Scripts Developer,Programming,Freelancing,Python,Selenium,Web Scraping,Bash,45,Intermediate,7,Development
+Data Engineer,Programming,Data Analytics,Python,SQL,Spark,Airflow,80,Advanced,8,Development
+Virtual Assistant,Freelancing,E-Commerce,Task Management,Email Management,Trello,Customer Support,15,Beginner,9,Admin
+Project Manager,Freelancing,Programming,Agile,Jira,Scrum,Budget Management,50,Advanced,7,Management
+Online Business Manager,Freelancing,E-Commerce,Team Coordination,SOPs,Asana,Reporting,45,Advanced,6,Management
+Customer Support Specialist,Freelancing,E-Commerce,Zendesk,Live Chat,Ticket Management,CRM,18,Beginner,8,Support
+Research Analyst,Freelancing,Data Analytics,Market Research,Excel,Survey Tools,Report Writing,30,Intermediate,7,Research
+Transcriptionist,Freelancing,Content Writing,Fast Typing,Audio Editing,Rev,Timestamping,12,Beginner,7,Admin
+Lead Generation Specialist,Freelancing,Digital Marketing,LinkedIn Sales Navigator,Email Outreach,CRM,Data Scraping,25,Intermediate,8,Sales
+Proofreader/Editor,Freelancing,Content Writing,Grammar,Style Guides,Track Changes,Chicago Manual,25,Intermediate,7,Writing
+Amazon FBA Specialist,E-Commerce,Digital Marketing,Amazon Seller Central,PPC Ads,Product Research,Inventory,40,Intermediate,8,E-Commerce
+Shopify Store Manager,E-Commerce,Digital Marketing,Shopify,Product Listings,Google Analytics,Email Marketing,35,Intermediate,8,E-Commerce
+eBay/Etsy Seller Consultant,E-Commerce,Digital Marketing,Product Photography,SEO Listings,Customer Reviews,Shipping,25,Beginner,7,E-Commerce
+Dropshipping Expert,E-Commerce,Digital Marketing,Oberlo/DSers,Supplier Sourcing,Facebook Ads,Shopify,38,Intermediate,7,E-Commerce
+E-Commerce Product Photographer,E-Commerce,Graphic Design,Product Photography,Photo Editing,White Background,Amazon Standards,30,Beginner,7,Design
+WooCommerce Store Developer,E-Commerce,Programming,WooCommerce,WordPress,PHP,Payment Gateway,45,Intermediate,7,Development
+QuickBooks Bookkeeper,QuickBooks,Freelancing,QuickBooks Online,Bank Reconciliation,Payroll,Financial Reports,30,Intermediate,8,Finance
+Accountant (Remote),QuickBooks,Freelancing,QuickBooks,Tax Preparation,Accounts Payable,GAAP,50,Advanced,7,Finance
+Payroll Specialist,QuickBooks,E-Commerce,QuickBooks Payroll,ADP,Tax Filing,Employee Benefits,38,Intermediate,7,Finance
+Financial Analyst,QuickBooks,Data Analytics,Excel,QuickBooks,Financial Modeling,Forecasting,60,Advanced,7,Finance
+Tax Consultant,QuickBooks,Freelancing,Tax Preparation,QuickBooks,IRS Compliance,GST/VAT,65,Advanced,6,Finance
+2D Drafter,AutoCAD,Graphic Design,AutoCAD,Technical Drawing,Floor Plans,ISO Standards,35,Beginner,7,Design
+3D Modeler,AutoCAD,Graphic Design,AutoCAD 3D,SolidWorks,Rendering,BIM,55,Intermediate,7,Design
+Architectural Designer,AutoCAD,AutoCAD,AutoCAD,Revit,SketchUp,Construction Docs,60,Advanced,7,Design
+Mechanical Designer,AutoCAD,AutoCAD,AutoCAD Mechanical,SolidWorks,GD&T,Manufacturing Specs,55,Advanced,6,Design
+Interior Designer (CAD),AutoCAD,Graphic Design,AutoCAD,SketchUp,3ds Max,Material Selection,50,Intermediate,6,Design
+Data Analyst,Data Analytics,Programming,Python,SQL,Tableau,Power BI,65,Intermediate,9,Analytics
+Business Intelligence Developer,Data Analytics,Programming,Power BI,SQL,DAX,ETL Pipelines,70,Advanced,8,Analytics
+Machine Learning Engineer,Data Analytics,Programming,Python,scikit-learn,TensorFlow,Feature Engineering,85,Advanced,8,Analytics
+Excel/Google Sheets Expert,Data Analytics,Freelancing,Excel Macros,VBA,Pivot Tables,Google Data Studio,30,Intermediate,8,Analytics
+Data Visualization Specialist,Data Analytics,Graphic Design,Tableau,D3.js,Power BI,Infographics,55,Intermediate,8,Analytics
+SQL Database Developer,Data Analytics,Programming,PostgreSQL,MySQL,Query Optimization,Stored Procedures,60,Advanced,7,Analytics
+SEO Specialist,Digital Marketing,Content Writing,Google Analytics,SEMrush,On-Page SEO,Link Building,35,Intermediate,9,Marketing
+Facebook/Instagram Ads Manager,Digital Marketing,E-Commerce,Meta Ads Manager,A/B Testing,Pixel Setup,Audience Targeting,45,Intermediate,9,Marketing
+Google Ads (PPC) Manager,Digital Marketing,E-Commerce,Google Ads,Keyword Bidding,Conversion Tracking,ROAS,50,Advanced,8,Marketing
+Email Marketing Specialist,Digital Marketing,E-Commerce,Klaviyo,Mailchimp,Segmentation,A/B Testing,35,Intermediate,8,Marketing
+Social Media Manager,Digital Marketing,Content Writing,Buffer,Hootsuite,Analytics,Community Management,28,Beginner,9,Marketing
+Affiliate Marketing Manager,Digital Marketing,E-Commerce,ShareASale,ClickBank,Content Marketing,Tracking Links,38,Intermediate,7,Marketing
+Influencer Marketing Coordinator,Digital Marketing,Content Writing,Influencer Research,Contract Negotiation,Campaign Tracking,ROI Analysis,40,Intermediate,7,Marketing
+TikTok / YouTube Marketing,Digital Marketing,Content Writing,Video SEO,Shorts/Reels Strategy,Analytics,Content Calendar,30,Beginner,8,Marketing
+WordPress Site Builder,WordPress,Digital Marketing,WordPress,Elementor,WooCommerce,Page Speed,28,Beginner,9,Development
+WordPress Maintenance,WordPress,Programming,Plugin Updates,Backups,Security Hardening,Uptime Monitoring,25,Beginner,8,Admin
+WordPress SEO Expert,WordPress,Digital Marketing,Yoast SEO,Google Search Console,Schema Markup,Site Speed,38,Intermediate,8,Marketing
+WordPress Theme Developer,WordPress,Programming,PHP,CSS,JavaScript,Child Themes,45,Advanced,7,Development
+WooCommerce Store Builder,WordPress,E-Commerce,WooCommerce,Payment Gateways,Product Variants,Checkout UX,40,Intermediate,8,Development
+WordPress Security Specialist,WordPress,Programming,Wordfence,SSL,Malware Removal,Firewall Rules,50,Advanced,6,Admin

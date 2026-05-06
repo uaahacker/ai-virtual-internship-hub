@@ -522,25 +522,45 @@ class DomainPredictorML:
     def _build_training_data(
         cls, include_seed: bool = True
     ) -> Tuple[List[np.ndarray], List[str]]:
-        """Collect feature vectors + labels from DB and optionally seed data."""
+        """
+        Collect feature vectors + labels from three sources (priority order):
+
+        1. Real student records from the PostgreSQL database
+        2. Curated CSV dataset (student_performance.csv) — 500 rows based on
+           Upwork/Freelancer.com market statistics 2024
+        3. Programmatically generated synthetic seed data (when include_seed=True)
+        """
         from apps.accounts.models import User
 
         X: List[np.ndarray] = []
         y: List[str]        = []
 
-        # Real students
+        # ── Source 1: Real students from DB ───────────────────────────────
+        n_real = 0
         for student in User.objects.filter(role='Student').iterator():
             feat = extract_student_features(student)
-            # Only use students who have at least one assessment
             domain_vec = feat[:N_DOMAINS]
             if not np.any(domain_vec > 0):
                 continue
-            # Label = domain with highest MCQ score
             label = DOMAINS[int(np.argmax(domain_vec))]
             X.append(feat)
             y.append(label)
+            n_real += 1
 
-        # Seed data
+        # ── Source 2: CSV dataset (student_performance.csv) ───────────────
+        try:
+            from apps.tasks.dataset_loader import load_student_performance
+            X_csv, y_csv = load_student_performance()
+            X.extend(X_csv)
+            y.extend(y_csv)
+            logger.info(
+                "Training data: %d real students + %d CSV samples loaded",
+                n_real, len(X_csv),
+            )
+        except Exception as exc:
+            logger.warning("Could not load CSV dataset: %s", exc)
+
+        # ── Source 3: Synthetic seed data ─────────────────────────────────
         if include_seed:
             X_seed, y_seed = generate_seed_data()
             X.extend(X_seed)
