@@ -251,6 +251,16 @@ docker compose run --rm certbot certonly \
   -d vihub.site \
   -d www.vihub.site
 ```
+```bash
+docker compose run --rm certbot certonly \
+  --webroot \
+  --webroot-path=/var/www/certbot \
+  --email your-email@gmail.com \ 
+  --agree-tos \
+  --no-eff-email \
+  -d vihub.site \
+  -d www.vihub.site
+```
 
 Replace `your-email@gmail.com` with your actual email.
 
