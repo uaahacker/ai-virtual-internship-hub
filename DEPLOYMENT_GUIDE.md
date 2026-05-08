@@ -137,6 +137,7 @@ From now on, your project lives at `/opt/vihub`.
 cd /opt/vihub/backend
 cp .env.example .env
 nano .env
+#also copy above in to /opt/vihub/
 ```
 
 Fill in these values (press `Ctrl+X`, then `Y`, then `Enter` to save):
