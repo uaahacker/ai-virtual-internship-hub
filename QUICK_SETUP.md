@@ -3,7 +3,7 @@
 > **For the Evaluator:** This guide gets the full system running locally in under 15 minutes.  
 > No Docker or internet connection is needed beyond the initial dependency install.
 
----
+---161.97.145.123
 
 ## What is this project?
 
@@ -129,7 +129,7 @@ python manage.py create_admin
 ### Step 6 — Download NLTK data (for NLP feedback engine)
 
 ```bash
-python -c "import nltk; nltk.download('punkt'); nltk.download('wordnet'); nltk.download('stopwords'); nltk.download('punkt_tab')"
+python -c "import nltk; nltk.download('punkt'); nltk.download('wordnet'); nltk.download('stopwords'); nltk.download('punkt_tab'); nltk.download('words')"
 ```
 
 ---

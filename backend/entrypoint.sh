@@ -21,7 +21,10 @@ echo "📂 Ensuring media directories exist..."
 mkdir -p /app/media/profile_pictures
 chmod -R 755 /app/media
 
-echo "🚀 Starting Gunicorn (workers=3, timeout=120s)..."
+echo "� Downloading NLTK corpora..."
+python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True); nltk.download('wordnet', quiet=True); nltk.download('stopwords', quiet=True); nltk.download('words', quiet=True)"
+
+echo "�🚀 Starting Gunicorn (workers=3, timeout=120s)..."
 exec gunicorn config.wsgi:application \
     --bind 0.0.0.0:8000 \
     --workers 3 \

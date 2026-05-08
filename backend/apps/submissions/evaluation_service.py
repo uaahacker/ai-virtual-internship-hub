@@ -155,18 +155,42 @@ def compute_grammar_issues(text: str) -> dict:
         issues.append(f"Multiple punctuation marks ({len(multi_punct)} occurrence(s))")
 
     issue_count = len(issues)
-    # Deduct 5 points per issue, min 40 if there is content
+    # Deduct 10 points per issue, no artificial floor (floor is only applied after coherence check)
     words = _tokenize_words(text)
     if not words:
         grammar_score = 0.0
     else:
-        grammar_score = round(max(40.0, 100.0 - (issue_count * 5)), 2)
+        grammar_score = round(max(0.0, 100.0 - (issue_count * 10)), 2)
 
     return {
         'issue_count': issue_count,
         'issues': issues[:10],  # cap at 10 for readability
         'grammar_score': grammar_score,
     }
+
+
+def compute_real_word_ratio(text: str) -> float:
+    """
+    Returns the fraction (0.0–1.0) of words that are recognized English dictionary words.
+    Uses NLTK words corpus.  Returns 1.0 (no penalty) if the corpus is unavailable so
+    the rest of the evaluation still works without crashing.
+    """
+    words = _tokenize_words(text)
+    if not words:
+        return 0.0
+    try:
+        import nltk
+        from nltk.corpus import words as nltk_words
+        try:
+            nltk_words.words()  # trigger load; raises LookupError if not downloaded
+        except LookupError:
+            nltk.download('words', quiet=True)
+        english_vocab = set(w.lower() for w in nltk_words.words())
+        real_count = sum(1 for w in words if w in english_vocab)
+        return real_count / len(words)
+    except Exception as exc:
+        logger.warning(f"Real-word ratio check failed (NLTK corpus unavailable?): {exc}")
+        return 1.0  # skip penalty if corpus not downloaded
 
 
 # ---------------------------------------------------------------------------
@@ -209,6 +233,8 @@ def evaluate_text_submission(
     length_data = compute_content_length_score(text)
     originality = compute_plagiarism_score(text, existing)
     grammar_data = compute_grammar_issues(text)
+    real_word_ratio = compute_real_word_ratio(text)
+    coherence_score = round(real_word_ratio * 100, 2)  # 0–100
 
     # Convert Flesch to 0-100 readability score
     # Flesch: 0-30 = very difficult, 60-70 = standard, 90-100 = very easy
@@ -224,14 +250,28 @@ def evaluate_text_submission(
         readability_score = max(60.0, 100.0 - (flesch - 80) * 1.5)  # too simple
     readability_score = round(readability_score, 2)
 
+    # -----------------------------------------------------------------------
+    # Coherence penalty
+    # If fewer than 50% of words are real English dictionary words the text is
+    # likely gibberish.  We scale all individual scores down proportionally so
+    # that random strings cannot produce inflated results.
+    # penalty goes from 0.0 (ratio=0) to 1.0 (ratio≥0.5) – no penalty above 50%.
+    # -----------------------------------------------------------------------
+    if real_word_ratio < 0.50:
+        penalty = real_word_ratio * 2.0  # 0.0 → 1.0
+        readability_score = round(readability_score * penalty, 2)
+        vocab = round(vocab * penalty, 2)
+        grammar_data['grammar_score'] = round(grammar_data['grammar_score'] * penalty, 2)
+
     # Weighted composite score
-    # Readability: 25% | Vocabulary: 20% | Grammar: 25% | Originality: 20% | Length: 10%
+    # Readability: 20% | Vocabulary: 15% | Grammar: 20% | Originality: 15% | Length: 10% | Coherence: 20%
     ai_score = round(
-        0.25 * readability_score
-        + 0.20 * vocab
-        + 0.25 * grammar_data['grammar_score']
-        + 0.20 * originality
-        + 0.10 * length_data['length_score'],
+        0.20 * readability_score
+        + 0.15 * vocab
+        + 0.20 * grammar_data['grammar_score']
+        + 0.15 * originality
+        + 0.10 * length_data['length_score']
+        + 0.20 * coherence_score,
         2,
     )
     ai_score = max(0.0, min(100.0, ai_score))
@@ -250,19 +290,31 @@ def evaluate_text_submission(
     strengths = []
     improvements = []
 
+    # Coherence / real-word feedback (checked first — overrides other positive signals)
+    if real_word_ratio < 0.50:
+        pct = round(real_word_ratio * 100)
+        improvements.append(
+            f"Your text contains mostly unrecognized words "
+            f"({pct}% valid English detected). "
+            f"Please write your response in clear, complete English sentences."
+        )
+        grammar_data['issues'].append(
+            f"Incoherent text: only {pct}% of words are recognized English words."
+        )
+
     if readability_score >= 70:
         strengths.append('Your writing is clear and easy to follow.')
-    else:
+    elif real_word_ratio >= 0.50:
         improvements.append('Try shorter sentences and simpler vocabulary to improve readability.')
 
     if vocab >= 60:
         strengths.append('Good vocabulary diversity — you used a wide range of words.')
-    else:
+    elif real_word_ratio >= 0.50:
         improvements.append('Use more varied vocabulary to strengthen your writing.')
 
-    if grammar_data['grammar_score'] >= 80:
+    if grammar_data['grammar_score'] >= 80 and real_word_ratio >= 0.50:
         strengths.append('No significant grammar issues detected.')
-    else:
+    elif real_word_ratio >= 0.50:
         improvements.append('Fix grammar issues: ' + '; '.join(grammar_data['issues'][:3]))
 
     if originality >= 85:
