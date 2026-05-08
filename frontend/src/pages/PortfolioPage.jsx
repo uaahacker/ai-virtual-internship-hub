@@ -242,6 +242,7 @@ export default function PortfolioPage() {
   const [filterDomain, setFilterDomain] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [viewMode, setViewMode] = useState('grid');
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => { loadPortfolio(); }, []);
 
@@ -299,6 +300,30 @@ export default function PortfolioPage() {
         URL.revokeObjectURL(url);
       }
     } catch (_) { toast.error('Failed to export portfolio'); }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!portfolio || exporting) return;
+    try {
+      setExporting(true);
+      const res = await api.get(`/tasks/portfolios/${portfolio.id}/export-pdf/`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const safeName = (user?.name || 'Portfolio').replace(/\s+/g, '_');
+      link.download = `VIHub_Portfolio_${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (_) {
+      toast.error('Failed to generate PDF. Please try again.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const getVisibleItems = () => {
@@ -395,14 +420,11 @@ export default function PortfolioPage() {
               </button>
               <button onClick={handleExport} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">Export JSON</button>
               <button
-                onClick={() => {
-                  document.title = `${portfolio.title || user?.name || 'My'}_Portfolio_${new Date().toISOString().slice(0, 10)}`;
-                  window.print();
-                  setTimeout(() => { document.title = 'VIHub'; }, 2000);
-                }}
-                className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-1"
+                onClick={handleDownloadPDF}
+                disabled={exporting}
+                className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                ⬇ Download PDF
+                {exporting ? '⏳ Generating…' : '⬇ Download PDF'}
               </button>
             </div>
           </div>

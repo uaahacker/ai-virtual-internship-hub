@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from django.http import HttpResponse
 from django.utils import timezone
 
 from apps.core.permissions import IsStudent, IsMentor, IsAdmin
@@ -558,6 +559,50 @@ class ExportPortfolioView(APIView):
             return Response({'success': False, 'message': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
         export_data = PortfolioService.export_portfolio_as_json(portfolio)
         return Response({'success': True, 'data': export_data})
+
+
+class ExportPortfolioPDFView(APIView):
+    """
+    GET /tasks/portfolios/<portfolio_id>/export-pdf/
+    Generates and streams a professional PDF portfolio document.
+    Returns a downloadable application/pdf response — no browser print,
+    no sidebar chrome, no dashboard layout.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, portfolio_id):
+        try:
+            portfolio = Portfolio.objects.get(id=portfolio_id)
+        except Portfolio.DoesNotExist:
+            return Response(
+                {'success': False, 'message': 'Portfolio not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if portfolio.user != request.user and not portfolio.is_public:
+            return Response(
+                {'success': False, 'message': 'Permission denied.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            from .pdf_service import generate_portfolio_pdf
+            pdf_bytes = generate_portfolio_pdf(portfolio)
+        except Exception as exc:
+            return Response(
+                {'success': False, 'message': f'PDF generation failed: {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        student_name = (
+            getattr(portfolio.user, 'name', None) or portfolio.user.email
+        ).replace(' ', '_')
+        from datetime import datetime as _dt
+        filename = f'VIHub_Portfolio_{student_name}_{_dt.now().strftime("%Y-%m-%d")}.pdf'
+
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Length'] = len(pdf_bytes)
+        return response
 
 
 class TaskRecommendationExplanationView(APIView):

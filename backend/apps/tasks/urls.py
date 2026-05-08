@@ -29,6 +29,7 @@ from .views import (
     UpdatePortfolioItemView,
     PortfolioStatsView,
     ExportPortfolioView,
+    ExportPortfolioPDFView,
     TaskRecommendationExplanationView,
 )
 from .analytics_views import (
@@ -72,6 +73,7 @@ urlpatterns = [
     path('portfolios/<int:portfolio_id>/update/', UpdatePortfolioView.as_view(), name='portfolio-update'),
     path('portfolios/<int:portfolio_id>/stats/', PortfolioStatsView.as_view(), name='portfolio-stats'),
     path('portfolios/<int:portfolio_id>/export/', ExportPortfolioView.as_view(), name='portfolio-export'),
+    path('portfolios/<int:portfolio_id>/export-pdf/', ExportPortfolioPDFView.as_view(), name='portfolio-export-pdf'),
     path('portfolio-items/<int:item_id>/', PortfolioItemDetailView.as_view(), name='portfolio-item-detail'),
     path('portfolio-items/<int:item_id>/update/', UpdatePortfolioItemView.as_view(), name='portfolio-item-update'),
 
