@@ -79,7 +79,7 @@ export const ChatProvider = ({ children }) => {
       };
       setMessages(prev => [...prev, userMessage]);
 
-      const response = await api.post(`/chatbot/sessions/${currentSession.id}/messages/`, { content });
+      const response = await api.post(`/chatbot/sessions/${currentSession.id}/messages/`, { content }, { timeout: 150000 }); // 2.5 min — free LLMs can be slow
       
       // Replace messages with server response (includes both user and assistant)
       setMessages(prev => {

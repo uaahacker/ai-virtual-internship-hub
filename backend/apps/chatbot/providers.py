@@ -48,7 +48,7 @@ class OpenRouterProvider(LLMProvider):
                 'model': self.model,
                 'messages': messages,
                 'temperature': kwargs.get('temperature', 0.7),
-                'max_tokens': kwargs.get('max_tokens', 500),
+                'max_tokens': kwargs.get('max_tokens', 800),
                 'top_p': kwargs.get('top_p', 1.0),
             }
             
@@ -58,7 +58,7 @@ class OpenRouterProvider(LLMProvider):
                 f'{self.api_base}/chat/completions',
                 headers=headers,
                 json=payload,
-                timeout=60  # Increased timeout for free models
+                timeout=120  # Free models can be slow — allow 2 minutes
             )
             
             # Detailed error logging

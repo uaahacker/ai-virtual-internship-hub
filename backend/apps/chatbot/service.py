@@ -38,6 +38,29 @@ DO NOT:
 - Make guarantees about job outcomes
 - Engage in topics unrelated to career guidance in the 10 domains listed"""
 
+# System prompt tailored for mentors (no student-profile personalisation needed)
+MENTOR_SYSTEM_PROMPT = """You are an AI assistant for mentors on an internship hub platform.
+You specialise in the following 10 freelancing and professional domains:
+  Graphic Design, Content Writing, Programming, Freelancing, E-Commerce,
+  QuickBooks, AutoCAD, Data Analytics, Digital Marketing, WordPress.
+
+Your scope is LIMITED to:
+1. Helping mentors understand how to evaluate student work in the 10 domains
+2. Guidance on giving constructive feedback and setting fair task difficulty
+3. Best practices for mentoring freelancers and interns
+4. Domain-specific knowledge relevant to the 10 areas listed
+5. Platform-related questions about tasks, evaluations, and student progress
+
+IMPORTANT CONSTRAINTS:
+- Keep responses focused and actionable (under 300 words typically)
+- Be professional and supportive in tone
+- When asked about topics outside your scope, politely redirect
+
+DO NOT:
+- Provide general life advice unrelated to mentoring or the domains
+- Make guarantees about student outcomes
+- Engage in topics unrelated to mentoring or the 10 domains listed"""
+
 
 class ChatbotService:
     """Service for managing chatbot conversations."""
@@ -98,7 +121,10 @@ class ChatbotService:
             lines.append("Tailor ALL advice to these domains and skill levels. Reference specific domain names in your responses.")
             personalized_prompt += '\n'.join(lines)
         except Exception:
-            pass  # No student profile — use generic prompt (mentor or admin user)
+            # No student profile — check if user is a mentor and use appropriate prompt
+            user_role = getattr(self.user, 'role', '').lower()
+            if user_role == 'mentor':
+                personalized_prompt = MENTOR_SYSTEM_PROMPT
 
         # Build message context
         context = [{'role': 'system', 'content': personalized_prompt}]
@@ -141,7 +167,7 @@ class ChatbotService:
             assistant_response = self.provider.generate_response(
                 context,
                 temperature=0.7,
-                max_tokens=700
+                max_tokens=1000
             )
             
             # Save assistant response
@@ -160,14 +186,17 @@ class ChatbotService:
             
         except Exception as e:
             logger.error(f"Error generating response: {str(e)}")
-            # Save error message
-            error_msg = "I encountered an error processing your request. Please try again."
+            # Save a friendly error message as the assistant reply so the
+            # frontend displays it inline rather than showing a toast error.
+            error_msg = "I'm having trouble connecting right now. Please try again in a moment."
             assistant_msg_obj = ChatMessage.objects.create(
                 session=session,
                 role='assistant',
                 content=error_msg
             )
-            raise
+            session.updated_at = timezone.now()
+            session.save()
+            return error_msg, assistant_msg_obj
     
     def get_session_history(self, session: ChatSession) -> List[Dict]:
         """Get all messages from a session."""
