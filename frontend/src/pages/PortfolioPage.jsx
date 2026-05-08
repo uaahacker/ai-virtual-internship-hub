@@ -443,7 +443,7 @@ export default function PortfolioPage() {
               <>
                 <div className="bg-purple-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500">Best Score</p>
-                  <p className="text-xl font-bold text-purple-700">{stats.max_score}%</p>
+                  <p className="text-xl font-bold text-purple-700">{(stats.max_score || 0).toFixed(1)}%</p>
                 </div>
                 <div className="bg-orange-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500">Domains</p>

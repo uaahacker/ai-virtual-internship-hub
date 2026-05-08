@@ -296,8 +296,8 @@ class PortfolioService:
 
         scores = [item.final_score for item in items]
         avg_score = round(sum(scores) / len(scores), 2) if scores else 0
-        max_score = max(scores) if scores else 0
-        min_score = min(scores) if scores else 0
+        max_score = round(max(scores), 2) if scores else 0
+        min_score = round(min(scores), 2) if scores else 0
 
         improvement_trend = [
             {
