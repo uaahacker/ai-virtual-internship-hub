@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const ChatMessage = ({ message, onFeedbackClick }) => {
   const isUser = message.role === 'user';
@@ -16,8 +17,8 @@ const ChatMessage = ({ message, onFeedbackClick }) => {
         >
           <div className={`${isUser ? 'text-white' : 'text-slate-900'} text-sm leading-relaxed`}>
             <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
               components={{
-                // Custom markdown rendering
                 p: ({ node, ...props }) => (
                   <p className="mb-2 last:mb-0" {...props} />
                 ),
@@ -36,29 +37,54 @@ const ChatMessage = ({ message, onFeedbackClick }) => {
                 em: ({ node, ...props }) => (
                   <em className="italic" {...props} />
                 ),
-                code: ({ node, inline, ...props }) => (
-                  inline ? (
-                    <code className={`${isUser ? 'bg-blue-700 px-1 rounded' : 'bg-slate-200 px-1 rounded'} font-mono text-xs`} {...props} />
-                  ) : (
-                    <pre className={`${isUser ? 'bg-blue-700' : 'bg-slate-200'} p-2 rounded mt-2 mb-2 overflow-x-auto`}>
-                      <code {...props} />
-                    </pre>
-                  )
-                ),
                 h1: ({ node, ...props }) => (
-                  <h1 className="text-lg font-bold mb-2 mt-2" {...props} />
+                  <h1 className="text-lg font-bold mb-2 mt-3" {...props} />
                 ),
                 h2: ({ node, ...props }) => (
-                  <h2 className="text-base font-bold mb-2 mt-2" {...props} />
+                  <h2 className="text-base font-bold mb-2 mt-3" {...props} />
                 ),
                 h3: ({ node, ...props }) => (
-                  <h3 className="text-sm font-bold mb-1 mt-1" {...props} />
+                  <h3 className="text-sm font-bold mb-1 mt-2" {...props} />
                 ),
                 blockquote: ({ node, ...props }) => (
                   <blockquote className={`border-l-4 ${isUser ? 'border-blue-400' : 'border-slate-400'} pl-3 italic my-2`} {...props} />
                 ),
                 a: ({ node, ...props }) => (
-                  <a className={`underline ${isUser ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-800'}`} {...props} />
+                  <a className={`underline ${isUser ? 'text-blue-200 hover:text-white' : 'text-blue-600 hover:text-blue-800'}`} target="_blank" rel="noopener noreferrer" {...props} />
+                ),
+                // Block code wrapper
+                pre: ({ node, ...props }) => (
+                  <pre className={`${isUser ? 'bg-blue-700' : 'bg-slate-200'} p-2 rounded mt-2 mb-2 overflow-x-auto`} {...props} />
+                ),
+                // Inline vs block code (react-markdown v10: no inline prop — detect by presence of className)
+                code: ({ node, className, children, ...props }) => {
+                  const isBlock = Boolean(className?.startsWith('language-'));
+                  return isBlock ? (
+                    <code className={`font-mono text-xs ${className || ''}`} {...props}>{children}</code>
+                  ) : (
+                    <code className={`${isUser ? 'bg-blue-700' : 'bg-slate-200'} px-1 rounded font-mono text-xs`} {...props}>{children}</code>
+                  );
+                },
+                // Table support (remark-gfm)
+                table: ({ node, ...props }) => (
+                  <div className="overflow-x-auto my-2">
+                    <table className={`min-w-full border-collapse text-xs rounded ${isUser ? 'border-blue-400' : 'border-slate-300'} border`} {...props} />
+                  </div>
+                ),
+                thead: ({ node, ...props }) => (
+                  <thead className={`${isUser ? 'bg-blue-700' : 'bg-slate-200'}`} {...props} />
+                ),
+                tbody: ({ node, ...props }) => (
+                  <tbody {...props} />
+                ),
+                tr: ({ node, ...props }) => (
+                  <tr className={`border-b ${isUser ? 'border-blue-500' : 'border-slate-200'}`} {...props} />
+                ),
+                th: ({ node, ...props }) => (
+                  <th className={`px-3 py-1.5 text-left font-semibold ${isUser ? 'text-blue-100' : 'text-slate-700'}`} {...props} />
+                ),
+                td: ({ node, ...props }) => (
+                  <td className="px-3 py-1.5" {...props} />
                 ),
               }}
             >
