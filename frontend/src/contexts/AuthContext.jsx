@@ -6,7 +6,6 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('user');
-    console.log('🔍 AuthContext init - user from localStorage:', saved ? 'yes' : 'no');
     return saved ? JSON.parse(saved) : null;
   });
   const [loading, setLoading] = useState(true);
@@ -16,42 +15,37 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     setUser(null);
-    console.log('🧹 AuthContext - cleared auth');
   };
 
   useEffect(() => {
-    console.log('🔍 AuthContext useEffect - token verification starting...');
-    // Verify token on mount
     const token = localStorage.getItem('access_token');
-    console.log('🔍 AuthContext - token exists:', !!token);
-    
-    // Set a timeout to force-load if getMe() is hanging
+
+    // Set a timeout to force-complete loading if getMe() hangs
+    let timedOut = false;
     const timeout = setTimeout(() => {
-      console.warn('⏱️ AuthContext - getMe() took too long, forcing load');
-      if (loading) setLoading(false);
+      timedOut = true;
+      setLoading(false);
     }, 5000);
-    
-    if (token && !user) {
-      console.log('🔍 AuthContext - calling authService.getMe()...');
+
+    if (token) {
+      // Always verify token with server — localStorage user may be stale
       authService.getMe()
         .then((res) => {
+          if (timedOut) return;
           const userData = res.data.data;
-          console.log('✅ AuthContext - got user:', userData.id);
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
           clearTimeout(timeout);
         })
-        .catch((err) => {
-          console.error('❌ AuthContext - getMe() failed:', err.message);
+        .catch(() => {
+          if (timedOut) return;
           clearTimeout(timeout);
           clearAuth();
         })
         .finally(() => {
-          console.log('🔍 AuthContext - setting loading to false');
-          setLoading(false);
+          if (!timedOut) setLoading(false);
         });
     } else {
-      console.log('🔍 AuthContext - no token or user exists, setting loading to false');
       clearTimeout(timeout);
       setLoading(false);
     }
@@ -64,7 +58,6 @@ export function AuthProvider({ children }) {
     localStorage.setItem('refresh_token', tokens.refresh);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    console.log('✅ AuthContext - login successful, user:', userData.id);
     return userData;
   };
 
@@ -75,7 +68,6 @@ export function AuthProvider({ children }) {
     localStorage.setItem('refresh_token', tokens.refresh);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    console.log('✅ AuthContext - register successful, user:', userData.id);
     return userData;
   };
 
@@ -95,9 +87,8 @@ export function AuthProvider({ children }) {
     try {
       const refresh = localStorage.getItem('refresh_token');
       await authService.logout(refresh);
-      console.log('✅ AuthContext - logout API successful');
-    } catch (err) {
-      console.error('⚠️ AuthContext - logout API failed:', err.message);
+    } catch {
+      // best-effort logout
     }
     clearAuth();
   };

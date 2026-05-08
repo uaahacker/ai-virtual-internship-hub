@@ -258,7 +258,7 @@ export default function AdminUsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">User</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">Email</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">Role</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
@@ -269,7 +269,22 @@ export default function AdminUsersPage() {
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-50 transition">
-                    <td className="px-4 py-3 font-medium text-slate-900">{u.name}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {u.profile_picture_url ? (
+                          <img
+                            src={u.profile_picture_url}
+                            alt={u.name}
+                            className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-200"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0 text-slate-600 font-semibold text-xs">
+                            {u.name?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        <span className="font-medium text-slate-900">{u.name}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-slate-600">{u.email}</td>
                     <td className="px-4 py-3"><Badge text={u.role} status={ROLE_COLORS[u.role] || 'default'} size="sm" /></td>
                     <td className="px-4 py-3"><Badge text={u.status} status={STATUS_COLORS[u.status] || 'default'} size="sm" /></td>

@@ -70,10 +70,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 function App() {
   try {
     const { user, loading } = useAuth();
-    console.log('🔍 App render - loading:', loading, 'user:', user?.id);
 
     if (loading) {
-      console.log('🔍 App - showing loading spinner');
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">
@@ -86,7 +84,6 @@ function App() {
       );
     }
 
-    console.log('🔍 App - rendering routes, user logged in:', !!user);
     return (
       <Routes>
       {/* Public routes */}

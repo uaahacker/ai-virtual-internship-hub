@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { taskService } from '../services/endpoints';
@@ -16,6 +16,10 @@ export default function TaskCompletionPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const navTimerRef = useRef(null);
+
+  // Clean up navigation timer if component unmounts before it fires
+  useEffect(() => () => { if (navTimerRef.current) clearTimeout(navTimerRef.current); }, []);
 
   useEffect(() => {
     if (!user) {
@@ -51,9 +55,9 @@ export default function TaskCompletionPage() {
 
       if (response.data.success) {
         setSuccess(true);
-        
+
         // Navigate to MCQ quiz after 2 seconds
-        setTimeout(() => {
+        navTimerRef.current = setTimeout(() => {
           const completionId = response.data.data.completion_id;
           const taskId = response.data.data.task_id;
           navigate(`/student/tasks/mcq/${completionId}/${taskId}`, {
@@ -65,7 +69,6 @@ export default function TaskCompletionPage() {
       }
     } catch (err) {
       setError('Error completing task');
-      console.error(err);
     } finally {
       setSubmitting(false);
     }

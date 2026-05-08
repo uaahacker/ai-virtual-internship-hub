@@ -25,7 +25,7 @@ export default function TaskMCQQuizPage() {
       return;
     }
     fetchMCQQuestions();
-    setStartTime(Date.now());
+    // Timer starts after questions load — see setStartTime call inside fetchMCQQuestions
   }, [user, navigate, taskId]);
 
   // Timer effect
@@ -50,12 +50,13 @@ export default function TaskMCQQuizPage() {
           initialAnswers[q.id] = '';
         });
         setAnswers(initialAnswers);
+        // Start timer only after questions are loaded
+        setStartTime(Date.now());
       } else {
         setError(response.data.error?.message || 'Failed to load quiz questions');
       }
     } catch (err) {
       setError('Error loading quiz');
-      console.error(err);
     } finally {
       setLoading(false);
     }

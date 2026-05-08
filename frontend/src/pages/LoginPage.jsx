@@ -31,8 +31,6 @@ export default function LoginPage() {
       toast.error(msg);
     }
   };
-  
-  console.log('✅ LoginPage rendered');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
