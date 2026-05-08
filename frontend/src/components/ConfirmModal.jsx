@@ -85,7 +85,7 @@ export function ProgressModal({ config, onClose }) {
   const { value, onChange, onConfirm, label = 'Progress (0–100)' } = config;
 
   const handleConfirm = () => {
-    onConfirm?.();
+    onConfirm?.(value);
     onClose();
   };
 

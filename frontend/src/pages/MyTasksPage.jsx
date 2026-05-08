@@ -317,7 +317,7 @@ export default function MyTasksPage() {
                             setProgressModal({
                               value: activeTask.progress_percentage,
                               onChange: (v) => setProgressValue(v),
-                              onConfirm: () => handleUpdateProgress(activeTask.id, progressValue),
+                              onConfirm: (v) => handleUpdateProgress(activeTask.id, v),
                             });
                           }}
                           disabled={updating}
