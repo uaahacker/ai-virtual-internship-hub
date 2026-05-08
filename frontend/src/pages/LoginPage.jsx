@@ -9,12 +9,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const DASH = { Student: '/student/dashboard', Mentor: '/mentor/dashboard', Admin: '/admin/dashboard' };
 
   const handleGoogleSuccess = async (idToken) => {
+    setGoogleLoading(true);
     try {
       const result = await googleLogin(idToken);
       if (result?.needs_onboarding) {
@@ -29,6 +31,8 @@ export default function LoginPage() {
     } catch (err) {
       const msg = err.response?.data?.error?.message || 'Google sign-in failed.';
       toast.error(msg);
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -154,6 +158,7 @@ export default function LoginPage() {
             onSuccess={handleGoogleSuccess}
             onError={() => toast.error('Google sign-in failed. Please try again.')}
             text="signin_with"
+            loading={googleLoading}
           />
 
           <p className="text-center mt-6 text-gray-600">

@@ -22,10 +22,12 @@ export default function RegisterPage() {
   });
   const [selectedDomains, setSelectedDomains] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const handleGoogleSuccess = async (idToken) => {
+    setGoogleLoading(true);
     try {
       const result = await googleLogin(idToken);
       if (result?.needs_onboarding) {
@@ -40,6 +42,8 @@ export default function RegisterPage() {
     } catch (err) {
       const msg = err.response?.data?.error?.message || 'Google sign-up failed.';
       toast.error(msg);
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -212,6 +216,7 @@ export default function RegisterPage() {
                 onSuccess={handleGoogleSuccess}
                 onError={() => toast.error('Google sign-up failed. Please try again.')}
                 text="signup_with"
+                loading={googleLoading}
               />
 
               <p className="text-center mt-6 text-gray-600">
