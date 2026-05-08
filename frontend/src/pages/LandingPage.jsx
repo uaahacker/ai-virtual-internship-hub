@@ -503,8 +503,8 @@ const LandingPage = () => {
                 </div>
                 <div>
                   <div className="text-white/50 text-xs uppercase tracking-widest mb-0.5">Developed by</div>
-                  <div className="text-white text-sm font-semibold">Ubaid Ullah</div>
-                  <div className="text-blue-300/70 text-xs">& Syed Aitzaz Ali Shah</div>
+                  <div className="text-white text-sm font-semibold">Ubaid Ullah & Syed Aitzaz Ali Shah</div>
+                  
                 </div>
                 <div className="ml-2 text-blue-400 text-lg">⚡</div>
               </div>
