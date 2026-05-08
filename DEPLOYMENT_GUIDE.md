@@ -790,6 +790,37 @@ docker compose down
 ```
 
 ---
+Safe deploy commands (run every time you push)
+```bash
+cd /opt/vihub
+git pull origin master
+
+# Frontend changed → rebuild nginx
+docker compose up -d --build nginx
+
+# Backend changed → rebuild backend
+docker compose up -d --build backend
+```
+Or if you changed both (safest, rebuilds everything):
+```bash
+docker compose up -d --build
+```
+If you added new Python packages to requirements.txt:
+```bash
+docker compose up -d --build backend
+```
+Check it worked:
+```bash
+docker compose ps          # all containers Up
+docker compose logs -f nginx   # watch for errors
+```
+For this fix specifically, only the frontend changed, so just run:
+```bash
+cd /opt/vihub
+git pull origin master
+docker compose up -d --build nginx
+```
+---
 
 ## Security Checklist
 
