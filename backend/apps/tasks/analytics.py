@@ -79,13 +79,14 @@ class StudentAnalyticsService:
         avg_mcq_score = sum(mcq_scores) / len(mcq_scores) if mcq_scores else 0
         avg_final_score = sum(final_scores) / len(final_scores) if final_scores else 0
         
-        # Get skill improvement trend (last 5 evaluations)  
-        recent_evaluations = evaluations.order_by('-evaluated_at')[:5]
+        # Get skill improvement trend (last 5 evaluations)
+        recent_evaluations = list(evaluations.order_by('-evaluated_at')[:5])
         skill_trend = [
             {
-                'date': e.evaluated_at.strftime('%Y-%m-%d'),
+                'date': e.evaluated_at.strftime('%Y-%m-%d') if e.evaluated_at else None,
                 'score': e.final_score,
-                'task': e.task_completion.task_assignment.task.title
+                'task': e.task_completion.task_assignment.task.title,
+                'domain': e.task_completion.task_assignment.task.domain,
             }
             for e in reversed(recent_evaluations)
         ]

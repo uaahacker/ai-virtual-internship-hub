@@ -48,28 +48,39 @@ const DomainBreakdownTable = ({ domains }) => (
 const SkillTrendTable = ({ trends }) => (
   <div className="bg-white border border-gray-200 rounded-lg p-6">
     <h3 className="text-lg font-semibold text-gray-900 mb-4">Skill Improvement Trend</h3>
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-gray-200">
-            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Task</th>
-            <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Score</th>
-            <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {trends && trends.map((trend, idx) => (
-            <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-3 px-4 text-sm text-gray-900">{trend.task_title}</td>
-              <td className="py-3 px-4 text-sm text-gray-700 text-center">{trend.final_score?.toFixed(1) || 'N/A'}%</td>
-              <td className="py-3 px-4 text-sm text-gray-700 text-center">
-                {new Date(trend.date).toLocaleDateString()}
-              </td>
+    {(!trends || trends.length === 0) ? (
+      <div className="text-center py-8 text-gray-400">
+        <p className="text-sm">No evaluated tasks yet.</p>
+        <p className="text-xs mt-1">Complete and submit tasks to see your score trend here.</p>
+      </div>
+    ) : (
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Task</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Domain</th>
+              <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Score</th>
+              <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {trends.map((trend, idx) => (
+              <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-3 px-4 text-sm text-gray-900">{trend.task || 'N/A'}</td>
+                <td className="py-3 px-4 text-sm text-gray-500">{trend.domain || '—'}</td>
+                <td className="py-3 px-4 text-sm text-gray-700 text-center">
+                  {trend.score != null ? `${Number(trend.score).toFixed(1)}%` : 'N/A'}
+                </td>
+                <td className="py-3 px-4 text-sm text-gray-700 text-center">
+                  {trend.date ? new Date(trend.date).toLocaleDateString() : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
   </div>
 );
 
