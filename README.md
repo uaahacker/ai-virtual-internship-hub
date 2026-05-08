@@ -228,7 +228,7 @@ venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 
 # Download NLTK data (one-time)
-python -c "import nltk; nltk.download('wordnet'); nltk.download('punkt')"
+python -c "import nltk; nltk.download('wordnet'); nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords'); nltk.download('words')"
 ```
 
 Create a `.env` file in `backend/`:

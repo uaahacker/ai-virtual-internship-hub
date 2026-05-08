@@ -168,6 +168,9 @@ CSRF_TRUSTED_ORIGINS=https://vihub.site,https://www.vihub.site
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
 
+# Google OAuth (server-side verification)
+GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
+
 # Chatbot LLM (OpenRouter — used in production)
 OPENROUTER_API_KEY=sk-or-...
 
@@ -180,6 +183,23 @@ SITE_URL=https://vihub.site
 ```
 
 **IMPORTANT:** Use the same `DB_PASSWORD` value — remember it for the next steps.
+
+### Step 6b — Create the root .env file (for frontend build)
+
+Docker Compose reads a `.env` file from the **same folder as `docker-compose.yml`** (`/opt/vihub/`) for variable substitution. The `VITE_GOOGLE_CLIENT_ID` must go here so it gets baked into the React build automatically — you will never need to pass it on the command line.
+
+```bash
+cd /opt/vihub
+nano .env
+```
+
+Add this single line:
+
+```env
+VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
+```
+
+Save and exit. From now on, `docker compose up -d --build nginx` picks it up automatically.
 
 ---
 
@@ -306,13 +326,13 @@ All commands below run inside the backend container.
 docker compose exec backend python manage.py create_admin
 ```
 
-Follow the prompts:
-```
-Email: admin@vihub.site
-First name: Admin
-Last name: VIHub
-Password: (choose strong password)
-```
+Default credentials created: **admin@hub.com** / **Admin@123**
+
+> **Forgot the admin password?** Reset it any time with this safe one-liner (does NOT delete other users):
+> ```bash
+> docker compose exec backend python manage.py shell -c \
+>   "from django.contrib.auth import get_user_model; U = get_user_model(); u = U.objects.get(email='admin@hub.com'); u.set_password('Admin@123'); u.save(); print('Done')"
+> ```
 
 ### Step 14 — Seed assessment questions and tasks
 
@@ -323,7 +343,7 @@ docker compose exec backend python manage.py seed_tasks
 
 `seed_assessments` creates 10 domain MCQ assessments. `seed_tasks` creates sample tasks for all domains so students have tasks to accept immediately after registration.
 
-This creates 10 domain assessments (Web Dev, Graphic Design, Content Writing, Digital Marketing, Video Editing, Data Analysis, Mobile Dev, UI/UX, Cybersecurity, Cloud Computing) with multiple MCQ questions each.
+This creates 10 domain assessments (Graphic Design, Web Development, Digital Marketing, Content Writing, Video Editing, Data Analysis, UI/UX Design, SEO & Analytics, Social Media Management, WordPress) with multiple MCQ questions each.
 
 ### Step 15 — Train the ML domain prediction model
 
@@ -340,7 +360,9 @@ docker compose exec backend python -c "
 import nltk
 nltk.download('wordnet')
 nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
+nltk.download('punkt_tab')
+nltk.download('stopwords')
+nltk.download('words')
 print('NLTK data downloaded successfully')
 "
 ```
@@ -712,10 +734,11 @@ docker compose up -d --build
 ```
 /opt/vihub/
 ├── docker-compose.yml
+├── .env                        ← Root .env: VITE_GOOGLE_CLIENT_ID (not in git)
 ├── backend/
 │   ├── Dockerfile
 │   ├── entrypoint.sh
-│   ├── .env                    ← YOUR SECRETS (not in git)
+│   ├── .env                    ← Backend secrets: DB, JWT, GOOGLE_CLIENT_ID, OPENROUTER (not in git)
 │   ├── .env.example            ← Template (in git)
 │   └── ...
 ├── frontend/
