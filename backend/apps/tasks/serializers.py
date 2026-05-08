@@ -45,6 +45,7 @@ class TaskAssignmentSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.name', read_only=True)
     assigned_by_name = serializers.CharField(source='assigned_by.name', read_only=True)
     task_details = TaskSerializer(source='task', read_only=True)
+    evaluation = serializers.SerializerMethodField()
 
     class Meta:
         model = TaskAssignment
@@ -55,6 +56,7 @@ class TaskAssignmentSerializer(serializers.ModelSerializer):
             'progress_percentage', 'recommended_score',
             'recommendation_reason', 'mentor_review_requested',
             'mentor_review_status', 'mentor_feedback',
+            'evaluation',
             'created_at', 'accepted_at', 'started_at',
             'completed_at', 'updated_at',
         ]
@@ -62,8 +64,27 @@ class TaskAssignmentSerializer(serializers.ModelSerializer):
             'id', 'assigned_by', 'accepted_at', 'started_at',
             'completed_at', 'created_at', 'updated_at',
             'task_title', 'task_domain', 'task_difficulty',
-            'student_name', 'assigned_by_name', 'task_details',
+            'student_name', 'assigned_by_name', 'task_details', 'evaluation',
         ]
+
+    def get_evaluation(self, obj):
+        """Return evaluation details if the task has been evaluated by a mentor."""
+        try:
+            ev = obj.completion.evaluation
+            if ev.status != 'evaluated':
+                return None
+            return {
+                'mcq_score': round(ev.mcq_score, 1) if ev.mcq_score is not None else None,
+                'mentor_score': round(ev.mentor_score, 1) if ev.mentor_score is not None else None,
+                'final_score': round(ev.final_score, 1) if ev.final_score is not None else None,
+                'mentor_feedback': ev.mentor_feedback or '',
+                'strengths': ev.strengths or [],
+                'weaknesses': ev.weaknesses or [],
+                'suggestions': ev.suggestions or [],
+                'evaluated_at': ev.evaluated_at.isoformat() if ev.evaluated_at else None,
+            }
+        except Exception:
+            return None
 
 
 class TaskAssignmentUpdateSerializer(serializers.ModelSerializer):

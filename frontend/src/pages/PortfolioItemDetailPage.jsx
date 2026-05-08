@@ -217,7 +217,7 @@ export default function PortfolioItemDetailPage() {
             <div className="bg-blue-50 rounded-lg p-4">
               <p className="text-sm text-gray-600 mb-2">MCQ Score</p>
               <div className="flex items-end gap-3">
-                <span className="text-3xl font-bold text-blue-600">{item.mcq_score}</span>
+                <span className="text-3xl font-bold text-blue-600">{item.mcq_score != null ? parseFloat(item.mcq_score).toFixed(1) : '—'}</span>
                 <span className="text-gray-500 mb-1">/100</span>
               </div>
               <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
@@ -233,7 +233,7 @@ export default function PortfolioItemDetailPage() {
               <div className="bg-purple-50 rounded-lg p-4">
                 <p className="text-sm text-gray-600 mb-2">Mentor Score</p>
                 <div className="flex items-end gap-3">
-                  <span className="text-3xl font-bold text-purple-600">{item.mentor_score}</span>
+                  <span className="text-3xl font-bold text-purple-600">{item.mentor_score != null ? parseFloat(item.mentor_score).toFixed(1) : '—'}</span>
                   <span className="text-gray-500 mb-1">/100</span>
                 </div>
                 <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
@@ -249,7 +249,7 @@ export default function PortfolioItemDetailPage() {
             <div className="bg-green-50 rounded-lg p-4">
               <p className="text-sm text-gray-600 mb-2">Final Score</p>
               <div className="flex items-end gap-3">
-                <span className="text-3xl font-bold text-green-600">{item.final_score}</span>
+                <span className="text-3xl font-bold text-green-600">{item.final_score != null ? parseFloat(item.final_score).toFixed(1) : '—'}</span>
                 <span className="text-gray-500 mb-1">/100</span>
               </div>
               <div className="mt-2 w-full bg-gray-200 rounded-full h-2">

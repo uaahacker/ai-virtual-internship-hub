@@ -353,19 +353,103 @@ export default function MyTasksPage() {
                       </button>
                     )}
 
-                    {activeTask.mentor_review_requested && (
+                    {activeTask.mentor_review_requested && activeTask.mentor_review_status !== 'reviewed' && (
                       <div className="px-4 py-2 bg-blue-50 text-blue-900 rounded-lg text-sm">
                         ✓ Review requested ({activeTask.mentor_review_status})
                       </div>
                     )}
-
-                    {activeTask.mentor_feedback && (
-                      <div className="w-full mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h4 className="font-medium text-blue-900 mb-2">Mentor Feedback</h4>
-                        <p className="text-sm text-blue-800">{activeTask.mentor_feedback}</p>
-                      </div>
-                    )}
                   </div>
+
+                  {/* Mentor Evaluation Card — shown once mentor has reviewed */}
+                  {activeTask.evaluation && (
+                    <div className="mt-6 border border-indigo-200 rounded-xl overflow-hidden">
+                      <div className="bg-indigo-600 px-5 py-3 flex items-center justify-between">
+                        <h4 className="text-white font-semibold text-sm">📝 Mentor Evaluation</h4>
+                        {activeTask.evaluation.evaluated_at && (
+                          <span className="text-indigo-200 text-xs">
+                            {new Date(activeTask.evaluation.evaluated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Scores */}
+                      <div className="grid grid-cols-3 divide-x divide-indigo-100 bg-indigo-50">
+                        <div className="px-4 py-3 text-center">
+                          <p className="text-xs text-indigo-500 font-medium uppercase tracking-wide">MCQ</p>
+                          <p className="text-2xl font-bold text-indigo-700 mt-0.5">
+                            {activeTask.evaluation.mcq_score != null ? activeTask.evaluation.mcq_score : '—'}
+                            <span className="text-sm font-normal text-indigo-400">/100</span>
+                          </p>
+                        </div>
+                        <div className="px-4 py-3 text-center">
+                          <p className="text-xs text-purple-500 font-medium uppercase tracking-wide">Mentor</p>
+                          <p className="text-2xl font-bold text-purple-700 mt-0.5">
+                            {activeTask.evaluation.mentor_score != null ? activeTask.evaluation.mentor_score : '—'}
+                            <span className="text-sm font-normal text-purple-400">/100</span>
+                          </p>
+                        </div>
+                        <div className="px-4 py-3 text-center">
+                          <p className="text-xs text-green-500 font-medium uppercase tracking-wide">Final</p>
+                          <p className="text-2xl font-bold text-green-700 mt-0.5">
+                            {activeTask.evaluation.final_score != null ? activeTask.evaluation.final_score : '—'}
+                            <span className="text-sm font-normal text-green-400">/100</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-5 space-y-4 bg-white">
+                        {/* Feedback text */}
+                        {activeTask.evaluation.mentor_feedback && (
+                          <div>
+                            <h5 className="text-sm font-semibold text-gray-700 mb-1">Feedback</h5>
+                            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                              {activeTask.evaluation.mentor_feedback}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Strengths / Weaknesses / Suggestions */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {activeTask.evaluation.strengths?.length > 0 && (
+                            <div className="bg-green-50 rounded-lg p-3">
+                              <h5 className="text-xs font-bold text-green-700 uppercase tracking-wide mb-2">💪 Strengths</h5>
+                              <ul className="space-y-1">
+                                {activeTask.evaluation.strengths.map((s, i) => (
+                                  <li key={i} className="text-xs text-green-800 flex items-start gap-1">
+                                    <span className="mt-0.5 shrink-0">•</span>{s}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {activeTask.evaluation.weaknesses?.length > 0 && (
+                            <div className="bg-yellow-50 rounded-lg p-3">
+                              <h5 className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-2">⚠️ To Improve</h5>
+                              <ul className="space-y-1">
+                                {activeTask.evaluation.weaknesses.map((w, i) => (
+                                  <li key={i} className="text-xs text-yellow-800 flex items-start gap-1">
+                                    <span className="mt-0.5 shrink-0">•</span>{w}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {activeTask.evaluation.suggestions?.length > 0 && (
+                            <div className="bg-blue-50 rounded-lg p-3">
+                              <h5 className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-2">💡 Suggestions</h5>
+                              <ul className="space-y-1">
+                                {activeTask.evaluation.suggestions.map((s, i) => (
+                                  <li key={i} className="text-xs text-blue-800 flex items-start gap-1">
+                                    <span className="mt-0.5 shrink-0">•</span>{s}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
