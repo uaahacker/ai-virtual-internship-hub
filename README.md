@@ -681,4 +681,4 @@ docker compose exec backend python manage.py migrate
 
 ## License
 
-This project was developed as a Final Year Project (FYP) for academic purposes.
+This project was developed as a Final Year Project (FYP) for academic purposes (Virtual Univeristy of Pakistan).
