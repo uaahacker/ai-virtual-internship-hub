@@ -470,7 +470,7 @@ const LandingPage = () => {
               <div className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-4">Developed Under</div>
               <div className="flex items-center gap-4 mb-5">
                 <img
-                  src="https://www.vu.edu.pk/Content/images/VUlogoNew.png"
+                  src="https://vulms.vu.edu.pk/App_Themes/Default/Images/logos/logo-1.png"
                   alt="Virtual University of Pakistan"
                   className="h-14 w-auto object-contain opacity-90"
                   onError={(e) => { e.target.replaceWith(Object.assign(document.createElement('div'), { className: 'w-14 h-14 rounded-xl bg-blue-800/60 flex items-center justify-center text-white text-xs font-bold text-center', textContent: 'VU' })); }}
