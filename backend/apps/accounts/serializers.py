@@ -48,11 +48,15 @@ class LoginSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     """Read-only user representation."""
     profile_picture_url = serializers.SerializerMethodField()
+    has_usable_password = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'name', 'email', 'role', 'status', 'created_at', 'profile_picture_url']
+        fields = ['id', 'name', 'email', 'role', 'status', 'created_at', 'profile_picture_url', 'has_usable_password']
         read_only_fields = fields
+
+    def get_has_usable_password(self, obj):
+        return obj.has_usable_password()
 
     def get_profile_picture_url(self, obj):
         try:
@@ -176,7 +180,7 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
 class ChangePasswordSerializer(serializers.Serializer):
     """Serializer for changing user password."""
     
-    old_password = serializers.CharField(write_only=True, required=True)
+    old_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     new_password = serializers.CharField(write_only=True, required=True, min_length=8)
     new_password_confirm = serializers.CharField(write_only=True, required=True, min_length=8)
     

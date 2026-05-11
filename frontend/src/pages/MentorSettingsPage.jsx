@@ -79,9 +79,16 @@ export default function MentorSettingsPage() {
     }
   };
 
-  // Change password
+  const hasPassword = user?.has_usable_password !== false;
+
+  // Change / set password
   const handleChangePassword = async () => {
-    if (!passwordForm.old_password || !passwordForm.new_password || !passwordForm.new_password_confirm) {
+    if (hasPassword && !passwordForm.old_password) {
+      toast.error('Please enter your current password');
+      return;
+    }
+
+    if (!passwordForm.new_password || !passwordForm.new_password_confirm) {
       toast.error('Please fill in all password fields');
       return;
     }
@@ -98,22 +105,30 @@ export default function MentorSettingsPage() {
 
     setLoading(true);
     try {
-      const response = await api.post('/auth/change-password/', {
-        old_password: passwordForm.old_password,
+      const payload = {
         new_password: passwordForm.new_password,
         new_password_confirm: passwordForm.new_password_confirm,
-      });
+      };
+      if (hasPassword) {
+        payload.old_password = passwordForm.old_password;
+      }
+
+      const response = await api.post('/auth/change-password/', payload);
 
       if (response.data.success) {
-        toast.success('Password changed successfully!');
+        toast.success(hasPassword ? 'Password changed successfully!' : 'Password set successfully!');
         setPasswordForm({
           old_password: '',
           new_password: '',
           new_password_confirm: '',
         });
+        // Update local user so the UI switches to "Change Password" mode
+        const updatedUser = { ...user, has_usable_password: true };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to change password');
+      toast.error(error.response?.data?.error || 'Failed to update password');
     } finally {
       setLoading(false);
     }
@@ -150,7 +165,7 @@ export default function MentorSettingsPage() {
             }`}
           >
             <FiLock size={20} />
-            Change Password
+            {hasPassword ? 'Change Password' : 'Set Password'}
           </button>
         </div>
 
@@ -262,27 +277,37 @@ export default function MentorSettingsPage() {
         {/* Password Change Tab */}
         {activeTab === 'password' && (
           <div className="bg-white rounded-xl shadow-sm p-8 space-y-6">
-            {/* Warning Box */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-yellow-800">
-                ⚠️ Use a strong password with at least 8 characters. Include uppercase, lowercase, numbers, and symbols for maximum security.
-              </p>
-            </div>
+            {/* Info / Warning Box */}
+            {!hasPassword ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  ℹ️ You signed in with Google and don't have a password yet. Set one below to also be able to log in with email &amp; password.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ Use a strong password with at least 8 characters. Include uppercase, lowercase, numbers, and symbols for maximum security.
+                </p>
+              </div>
+            )}
 
-            {/* Old Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Current Password
-              </label>
-              <input
-                type="password"
-                name="old_password"
-                value={passwordForm.old_password}
-                onChange={handlePasswordChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter your current password"
-              />
-            </div>
+            {/* Old Password — only shown if user already has a password */}
+            {hasPassword && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  name="old_password"
+                  value={passwordForm.old_password}
+                  onChange={handlePasswordChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter your current password"
+                />
+              </div>
+            )}
 
             {/* New Password */}
             <div>
@@ -315,7 +340,7 @@ export default function MentorSettingsPage() {
               />
             </div>
 
-            {/* Change Button */}
+            {/* Change / Set Password Button */}
             <div className="flex gap-3 pt-4">
               <button
                 onClick={handleChangePassword}
@@ -323,7 +348,7 @@ export default function MentorSettingsPage() {
                 className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
               >
                 <FiCheck size={18} />
-                {loading ? 'Updating...' : 'Change Password'}
+                {loading ? 'Updating...' : hasPassword ? 'Change Password' : 'Set Password'}
               </button>
               <button
                 onClick={() => {
