@@ -56,7 +56,7 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_has_usable_password(self, obj):
-        return obj.has_usable_password()
+        return bool(obj.has_set_password)
 
     def get_profile_picture_url(self, obj):
         try:

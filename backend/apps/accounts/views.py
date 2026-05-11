@@ -856,8 +856,9 @@ class ChangePasswordView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
-        # Set new password
+        # Set new password and mark that the user has explicitly set one
         user.set_password(serializer.validated_data['new_password'])
+        user.has_set_password = True
         user.save()
         
         return Response({
@@ -1361,7 +1362,8 @@ class GoogleAuthView(APIView):
         )
         user.google_id = google_sub
         user.is_active = True
-        user.save(update_fields=['google_id', 'is_active'])
+        user.has_set_password = False  # Google user — no explicit password set
+        user.save(update_fields=['google_id', 'is_active', 'has_set_password'])
 
         # Create matching profile
         if role == 'Student':

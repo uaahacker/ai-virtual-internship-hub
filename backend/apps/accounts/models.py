@@ -59,6 +59,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Google OAuth
     google_id = models.CharField(max_length=255, blank=True, default='', db_index=True)
     onboarding_complete = models.BooleanField(default=True)  # False for new Google users until role is selected
+    has_set_password = models.BooleanField(default=False)  # True only when user explicitly sets/changes a password
 
     objects = UserManager()
 
