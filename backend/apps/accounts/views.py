@@ -842,8 +842,8 @@ class ChangePasswordView(APIView):
         
         user = request.user
 
-        # If the user has a usable password (non-Google), verify the old one
-        if user.has_usable_password():
+        # If the user has explicitly set a password (non-Google), verify the old one
+        if user.has_set_password:
             old_password = serializer.validated_data.get('old_password', '')
             if not old_password:
                 return Response(
